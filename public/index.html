@@ -759,6 +759,16 @@
 
         <!-- RIGHT: 9:16 Live Preview -->
         <div class="crop-preview-col glass-card">
+          <!-- Burning Status -->
+          <div id="subBurnProgressSection" class="hidden" style="margin-top: 1rem;">
+            <div class="progress-track" style="margin-bottom: 0.5rem;">
+              <div id="subBurnProgressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p id="subBurnStatusText" class="cyber-dim" style="font-size: 0.75rem;">Burning subtitles into video…</p>
+          </div>
+                 <!-- Empty State -->
+
+          <!-- Progress Section -->
           <div class="panel-header">
             <span class="step-num" style="font-size:0.65rem;">PRV</span>
             <h2>9:16 PREVIEW</h2>
@@ -773,122 +783,185 @@
       </div><!-- /crop-studio-layout -->
     </div><!-- /panelCropStudio -->
 
-    <!-- ══ TAB PANEL: SUBTITLE STUDIO ══════════════════════════════════════ -->
+    <!-- TAB PANEL: SUBTITLE STUDIO -->
     <div class="tab-panel hidden" id="panelSubtitles">
       <main class="app-grid">
-        <!-- LEFT COLUMN: SETTINGS -->
         <section class="ops-panel glass-card">
-          <div class="panel-header">
-            <span class="step-num">01</span>
-            <h2>SUBTITLE SETUP</h2>
-          </div>
-          
+          <div class="panel-header"><span class="step-num">01</span><h2>VIDEO FILE</h2></div>
           <div class="input-group">
             <label class="neon-label">Local Video File</label>
             <div class="path-input-wrapper">
-              <input type="text" id="subFilePath" placeholder="Click BROWSE or paste absolute path…" autocomplete="off" />
+              <input type="text" id="subFilePath" placeholder="Click BROWSE or paste absolute path..." autocomplete="off" />
               <button id="subBtnBrowse" class="glow-btn browse-btn">BROWSE</button>
               <button id="subBtnAnalyze" class="glow-btn">ANALYZE</button>
             </div>
           </div>
-
           <div id="subProbeResult" class="probe-result-card hidden">
             <div class="probe-meta-grid">
-              <div class="meta-item"><span class="label">FILE</span><span id="subMetaFileName" class="value">—</span></div>
-               <div class="meta-item"><span class="label">DURATION</span><span id="subMetaDuration" class="value">—</span></div>
-               <div class="meta-item"><span class="label">RESOLUTION</span><span id="subMetaResolution" class="value">—</span></div>
+              <div class="meta-item"><span class="label">FILE</span><span id="subMetaFileName" class="value">-</span></div>
+              <div class="meta-item"><span class="label">DURATION</span><span id="subMetaDuration" class="value">-</span></div>
+              <div class="meta-item"><span class="label">RESOLUTION</span><span id="subMetaResolution" class="value">-</span></div>
             </div>
           </div>
 
-          <div id="subConfigSection" class="config-section disabled-state" style="margin-top: 1.2rem;">
-            <div class="panel-header">
-              <span class="step-num">02</span>
-              <h2>TRANSCRIPTION SETTINGS</h2>
-            </div>
-
+          <div id="subConfigSection" class="config-section disabled-state" style="margin-top:1.2rem;">
+            <div class="panel-header"><span class="step-num">02</span><h2>TRANSCRIBE AUDIO</h2></div>
             <div class="input-group">
-              <label class="neon-label">Language Detection Mode</label>
-              <select id="subLanguageSelect" class="glow-select" style="width: 100%;">
-                <option value="auto" selected>🤖 Auto-Detect Language (Scan Mode)</option>
-                <option value="en-US">🇺🇸 English (en-US)</option>
-                <option value="hi-IN">🇮🇳 Hindi (hi-IN)</option>
-                <option value="te-IN">🇮🇳 Telugu (te-IN)</option>
-                <option value="ta-IN">🇮🇳 Tamil (ta-IN)</option>
-                <option value="es-ES">🇪🇸 Spanish (es-ES)</option>
-                <option value="fr-FR">🇫🇷 French (fr-FR)</option>
-                <option value="de-DE">🇩🇪 German (de-DE)</option>
+              <label class="neon-label">Audio Language</label>
+              <select id="subLanguageSelect" class="glow-select" style="width:100%;">
+                <option value="auto" selected>Auto-Detect Language</option>
+                <option value="en-US">English (en-US)</option>
+                <option value="hi-IN">Hindi (hi-IN)</option>
+                <option value="te-IN">Telugu (te-IN)</option>
+                <option value="ta-IN">Tamil (ta-IN)</option>
+                <option value="kn-IN">Kannada (kn-IN)</option>
+                <option value="ml-IN">Malayalam (ml-IN)</option>
+                <option value="mr-IN">Marathi (mr-IN)</option>
+                <option value="bn-IN">Bengali (bn-IN)</option>
+                <option value="es-ES">Spanish (es-ES)</option>
+                <option value="fr-FR">French (fr-FR)</option>
+                <option value="de-DE">German (de-DE)</option>
+                <option value="it-IT">Italian (it-IT)</option>
+                <option value="pt-BR">Portuguese (pt-BR)</option>
+                <option value="ru-RU">Russian (ru-RU)</option>
+                <option value="zh-CN">Chinese (zh-CN)</option>
+                <option value="ja-JP">Japanese (ja-JP)</option>
+                <option value="ko-KR">Korean (ko-KR)</option>
+                <option value="ar-SA">Arabic (ar-SA)</option>
+                <option value="tr-TR">Turkish (tr-TR)</option>
+                <option value="nl-NL">Dutch (nl-NL)</option>
               </select>
             </div>
+            <button id="subBtnGenerate" class="glow-btn generate-btn" style="width:100%;margin-top:1rem;">
+              STEP 1 - TRANSCRIBE AUDIO TO SRT
+            </button>
+          </div>
 
-            <button id="subBtnGenerate" class="glow-btn generate-btn" style="width: 100%; margin-top: 1rem;">
-              💬 GENERATE SUBTITLES (.SRT)
+          <div id="subTranslateSection" class="config-section disabled-state" style="margin-top:1.2rem;">
+            <div class="panel-header"><span class="step-num">03</span><h2>TRANSLATE SUBTITLES</h2></div>
+            <div class="input-group">
+              <label class="neon-label">Translate To</label>
+              <select id="subTargetLangSelect" class="glow-select" style="width:100%;">
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="te">Telugu</option>
+                <option value="ta">Tamil</option>
+                <option value="kn">Kannada</option>
+                <option value="ml">Malayalam</option>
+                <option value="mr">Marathi</option>
+                <option value="bn">Bengali</option>
+                <option value="pa">Punjabi</option>
+                <option value="gu">Gujarati</option>
+                <option value="ur">Urdu</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
+                <option value="ru">Russian</option>
+                <option value="zh-CN">Chinese Simplified</option>
+                <option value="zh-TW">Chinese Traditional</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="ar">Arabic</option>
+                <option value="tr">Turkish</option>
+                <option value="nl">Dutch</option>
+                <option value="pl">Polish</option>
+                <option value="sv">Swedish</option>
+                <option value="da">Danish</option>
+                <option value="fi">Finnish</option>
+                <option value="no">Norwegian</option>
+                <option value="cs">Czech</option>
+                <option value="ro">Romanian</option>
+                <option value="hu">Hungarian</option>
+                <option value="el">Greek</option>
+                <option value="he">Hebrew</option>
+                <option value="id">Indonesian</option>
+                <option value="ms">Malay</option>
+                <option value="th">Thai</option>
+                <option value="vi">Vietnamese</option>
+                <option value="uk">Ukrainian</option>
+                <option value="fa">Persian</option>
+                <option value="sw">Swahili</option>
+                <option value="af">Afrikaans</option>
+              </select>
+            </div>
+            <button id="subBtnTranslate" class="glow-btn" style="width:100%;margin-top:0.8rem;background:linear-gradient(135deg,rgba(168,85,247,0.25),rgba(59,130,246,0.2));border-color:rgba(168,85,247,0.5);">
+              STEP 2 - TRANSLATE SRT
+            </button>
+          </div>
+
+          <div id="subBurnSection" class="config-section disabled-state" style="margin-top:1.2rem;">
+            <div class="panel-header"><span class="step-num">04</span><h2>BURN TO VIDEO</h2></div>
+            <p class="cyber-dim" style="font-size:0.72rem;margin-bottom:0.8rem;">Burns the final SRT hardcoded into the video using FFmpeg.</p>
+            <button id="subBtnBurnVideo" class="glow-btn generate-btn" style="width:100%;background:linear-gradient(135deg,rgba(6,182,212,0.3),rgba(16,185,129,0.2));border-color:rgba(6,182,212,0.5);">
+              STEP 3 - BURN SUBTITLES INTO VIDEO
             </button>
           </div>
         </section>
 
-        <!-- RIGHT COLUMN: RESULTS & PREVIEW -->
         <section class="results-panel glass-card">
-          <div class="panel-header">
-            <span class="step-num">03</span>
-            <h2>SUBTITLE STUDIO HUB</h2>
-          </div>
+          <div class="panel-header"><span class="step-num">X</span><h2>SUBTITLE STUDIO HUB</h2></div>
 
-          <!-- Empty State -->
           <div id="subEmptyState" class="empty-state">
-            <p class="cyber-dim">Select a video and launch transcription to generate subtitles</p>
+            <p class="cyber-dim">Browse video / Transcribe audio / Translate language / Burn into video</p>
           </div>
 
-          <!-- Progress Section -->
-          <div id="subProgressSection" class="hidden">
-            <div class="progress-track" style="margin-bottom: 0.5rem;">
-              <div id="subProgressFill" class="progress-fill" style="width: 0%"></div>
-            </div>
-            <p id="subStatusText" class="cyber-dim" style="font-size: 0.75rem;">Initializing transcription…</p>
+          <div id="subProgressSection" class="hidden" style="margin-bottom:0.8rem;">
+            <p class="neon-label" style="font-size:0.65rem;margin-bottom:0.4rem;color:var(--accent-cyan);">STEP 1: TRANSCRIBING AUDIO</p>
+            <div class="progress-track" style="margin-bottom:0.4rem;"><div id="subProgressFill" class="progress-fill" style="width:0%"></div></div>
+            <p id="subStatusText" class="cyber-dim" style="font-size:0.72rem;">Initializing transcription...</p>
           </div>
 
-          <!-- Results section -->
-          <div id="subResultsSection" class="hidden" style="display: flex; flex-direction: column; gap: 1rem;">
-            <h3 class="neon-label" style="color: #22c55e;">✅ SRT Generated successfully</h3>
-             
-            <div class="proposed-item" style="border-color: rgba(34, 197, 94, 0.25);">
-              <div class="proposed-left" style="flex-direction: column; align-items: flex-start; gap: 2px;">
-                <span style="font-size: 0.7rem; color: rgba(255,255,255,0.4);">Detected Language / Mode</span>
-                <strong id="subResultLang" style="color: #fff; font-size: 0.78rem;">-</strong>
+          <div id="subResultsSection" class="hidden" style="display:flex;flex-direction:column;gap:0.7rem;">
+            <div class="proposed-item" style="border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.04);">
+              <div class="proposed-left" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                <span style="font-size:0.65rem;color:rgba(255,255,255,0.4);">TRANSCRIPTION COMPLETE</span>
+                <strong id="subResultLang" style="color:#22c55e;font-size:0.78rem;">-</strong>
               </div>
+              <a id="subBtnDownloadSrt" href="#" download class="proposed-btn preview-btn" style="text-decoration:none;background:rgba(34,197,94,0.12);color:#22c55e;border-color:rgba(34,197,94,0.3);font-size:0.65rem;white-space:nowrap;">Download SRT</a>
             </div>
-
-            <div style="display: flex; gap: 0.6rem;">
-              <a id="subBtnDownloadSrt" href="#" download class="glow-btn" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.75rem; background: var(--accent-purple); color: #fff; border-color: rgba(168,85,247,0.4); display: flex; align-items: center; justify-content: center;">
-                📥 DOWNLOAD SRT
-              </a>
-              <button id="subBtnBurnVideo" class="glow-btn" style="flex: 1; font-size: 0.75rem; background: var(--accent-cyan); color: #000;">
-                🔥 BURN INTO VIDEO
-              </button>
-            </div>
-
-            <!-- Preview of subtitles -->
-            <div class="input-group" style="margin-top: 0.5rem;">
-              <label class="neon-label">SRT File Content Preview</label>
-              <textarea id="subSrtPreviewText" readonly style="width: 100%; height: 180px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: var(--text-secondary); font-family: monospace; font-size: 0.7rem; padding: 0.5rem; resize: none;"></textarea>
+            <div class="input-group">
+              <label class="neon-label" style="font-size:0.62rem;">ORIGINAL SRT PREVIEW</label>
+              <textarea id="subSrtPreviewText" readonly style="width:100%;height:110px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-secondary);font-family:monospace;font-size:0.68rem;padding:0.5rem;resize:none;"></textarea>
             </div>
           </div>
 
-          <!-- Burning Status -->
-          <div id="subBurnProgressSection" class="hidden" style="margin-top: 1rem;">
-            <div class="progress-track" style="margin-bottom: 0.5rem;">
-              <div id="subBurnProgressFill" class="progress-fill" style="width: 0%"></div>
+          <div id="subTranslateProgressSection" class="hidden" style="margin-top:0.8rem;">
+            <p class="neon-label" style="font-size:0.65rem;margin-bottom:0.4rem;color:var(--accent-purple);">STEP 2: TRANSLATING SUBTITLES</p>
+            <div class="progress-track" style="margin-bottom:0.4rem;"><div id="subTranslateProgressFill" class="progress-fill" style="width:0%;background:linear-gradient(90deg,var(--accent-purple),#818cf8);"></div></div>
+            <p id="subTranslateStatusText" class="cyber-dim" style="font-size:0.72rem;">Connecting to translation engine...</p>
+          </div>
+
+          <div id="subTranslatedResultSection" class="hidden" style="margin-top:0.7rem;display:flex;flex-direction:column;gap:0.6rem;">
+            <div class="proposed-item" style="border-color:rgba(168,85,247,0.3);background:rgba(168,85,247,0.04);">
+              <div class="proposed-left" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                <span style="font-size:0.65rem;color:rgba(255,255,255,0.4);">TRANSLATION COMPLETE</span>
+                <strong id="subTranslatedLangLabel" style="color:#a855f7;font-size:0.78rem;">-</strong>
+              </div>
+              <a id="subBtnDownloadTranslatedSrt" href="#" download class="proposed-btn preview-btn" style="text-decoration:none;background:rgba(168,85,247,0.15);color:var(--accent-purple);border-color:rgba(168,85,247,0.3);font-size:0.65rem;white-space:nowrap;">Download SRT</a>
             </div>
-            <p id="subBurnStatusText" class="cyber-dim" style="font-size: 0.75rem;">Burning subtitles into video…</p>
+            <div class="input-group">
+              <label class="neon-label" style="font-size:0.62rem;">TRANSLATED SRT PREVIEW</label>
+              <textarea id="subTranslatedSrtPreview" readonly style="width:100%;height:90px;background:rgba(0,0,0,0.3);border:1px solid rgba(168,85,247,0.15);border-radius:6px;color:var(--text-secondary);font-family:monospace;font-size:0.68rem;padding:0.5rem;resize:none;"></textarea>
+            </div>
           </div>
 
-          <!-- Burn Success Card -->
-          <div id="subBurnResultSection" class="hidden glass-card" style="margin-top: 1rem; padding: 0.8rem;">
-            <p class="neon-label" style="color: #22c55e; margin-bottom: 0.5rem;">🔥 Video Rendered Successfully</p>
-            <a id="subBurnResultLink" href="#" target="_blank" class="glow-btn" style="display: block; text-align: center; font-size: 0.75rem; text-decoration: none;">
-              ▶ PLAY SUBTITLED VIDEO
-            </a>
+          <div id="subBurnProgressSection" class="hidden" style="margin-top:0.8rem;">
+            <p class="neon-label" style="font-size:0.65rem;margin-bottom:0.4rem;color:var(--accent-cyan);">STEP 3: BURNING INTO VIDEO</p>
+            <div class="progress-track" style="margin-bottom:0.4rem;"><div id="subBurnProgressFill" class="progress-fill" style="width:0%;background:linear-gradient(90deg,var(--accent-cyan),#10b981);"></div></div>
+            <p id="subBurnStatusText" class="cyber-dim" style="font-size:0.72rem;">FFmpeg processing...</p>
           </div>
 
+          <div id="subBurnResultSection" class="hidden" style="margin-top:0.8rem;">
+            <div class="proposed-item" style="border-color:rgba(6,182,212,0.4);background:rgba(6,182,212,0.06);">
+              <div class="proposed-left" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                <span style="font-size:0.65rem;color:rgba(255,255,255,0.4);">VIDEO READY</span>
+                <strong style="color:#06b6d4;font-size:0.75rem;">Subtitled video exported!</strong>
+              </div>
+              <a id="subBurnResultLink" href="#" target="_blank" class="proposed-btn preview-btn" style="text-decoration:none;background:rgba(6,182,212,0.15);color:var(--accent-cyan);border-color:rgba(6,182,212,0.3);font-size:0.65rem;white-space:nowrap;">Play Video</a>
+            </div>
+          </div>
         </section>
       </main>
     </div>

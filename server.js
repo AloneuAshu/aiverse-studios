@@ -859,6 +859,64 @@ app.post('/api/subtitle-generate', (req, res) => {
   })();
 });
 
+// API: SUBTITLE TRANSLATE
+app.post('/api/subtitle-translate', (req, res) => {
+  const { srtPath, targetLang } = req.body;
+  if (!srtPath || !targetLang) return res.status(400).json({ error: 'srtPath and targetLang required' });
+
+  const srtFilename = path.basename(srtPath);
+  const absSrtPath = path.join(SHORTS_DIR, srtFilename);
+  if (!fs.existsSync(absSrtPath)) return res.status(404).json({ error: 'SRT file not found' });
+
+  const uniqueId = `trans_${Date.now()}`;
+  const outSrtName = `translated_${targetLang}_${Date.now()}.srt`;
+  const outSrtPath = path.join(SHORTS_DIR, outSrtName);
+
+  activeBatches[uniqueId] = {
+    batchId: uniqueId,
+    status: 'translating',
+    progress: 0,
+    translatedSrtPath: `/shorts/${outSrtName}`,
+    targetLang,
+    error: null
+  };
+
+  res.json({ success: true, batchId: uniqueId });
+
+  (async () => {
+    try {
+      const scriptPath = path.join(__dirname, 'translate.py');
+      const py = spawn('python', [
+        scriptPath,
+        '--input_srt', absSrtPath,
+        '--output_srt', outSrtPath,
+        '--target_lang', targetLang
+      ]);
+      py.stdout.on('data', data => {
+        const line = data.toString().trim();
+        console.log(`[TRANSLATE] ${line}`);
+        const match = line.match(/PROGRESS:\s*(\d+)%/);
+        if (match) activeBatches[uniqueId].progress = parseInt(match[1]);
+      });
+      py.stderr.on('data', data => {
+        console.error(`[TRANSLATE] Err: ${data.toString()}`);
+      });
+      py.on('close', code => {
+        if (code === 0 && fs.existsSync(outSrtPath)) {
+          activeBatches[uniqueId].status = 'completed';
+          activeBatches[uniqueId].progress = 100;
+        } else {
+          activeBatches[uniqueId].status = 'failed';
+          activeBatches[uniqueId].error = 'Translation script failed';
+        }
+      });
+    } catch (err) {
+      activeBatches[uniqueId].status = 'failed';
+      activeBatches[uniqueId].error = err.message;
+    }
+  })();
+});
+
 // API: SUBTITLE BURN
 app.post('/api/subtitle-burn', (req, res) => {
   const { filePath, srtPath } = req.body;

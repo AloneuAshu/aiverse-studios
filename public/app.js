@@ -2676,6 +2676,11 @@ function initSubtitles() {
   const subConfigSection = $('subConfigSection');
   const subLanguageSelect = $('subLanguageSelect');
   const subBtnGenerate = $('subBtnGenerate');
+  const subTranslateSection = $('subTranslateSection');
+  const subTargetLangSelect = $('subTargetLangSelect');
+  const subBtnTranslate = $('subBtnTranslate');
+  const subBurnSection = $('subBurnSection');
+  const subBtnBurnVideo = $('subBtnBurnVideo');
   const subEmptyState = $('subEmptyState');
   const subProgressSection = $('subProgressSection');
   const subProgressFill = $('subProgressFill');
@@ -2683,123 +2688,110 @@ function initSubtitles() {
   const subResultsSection = $('subResultsSection');
   const subResultLang = $('subResultLang');
   const subBtnDownloadSrt = $('subBtnDownloadSrt');
-  const subBtnBurnVideo = $('subBtnBurnVideo');
   const subSrtPreviewText = $('subSrtPreviewText');
+  const subTranslateProgressSection = $('subTranslateProgressSection');
+  const subTranslateProgressFill = $('subTranslateProgressFill');
+  const subTranslateStatusText = $('subTranslateStatusText');
+  const subTranslatedResultSection = $('subTranslatedResultSection');
+  const subTranslatedLangLabel = $('subTranslatedLangLabel');
+  const subBtnDownloadTranslatedSrt = $('subBtnDownloadTranslatedSrt');
+  const subTranslatedSrtPreview = $('subTranslatedSrtPreview');
   const subBurnProgressSection = $('subBurnProgressSection');
   const subBurnProgressFill = $('subBurnProgressFill');
   const subBurnStatusText = $('subBurnStatusText');
   const subBurnResultSection = $('subBurnResultSection');
   const subBurnResultLink = $('subBurnResultLink');
 
-  let currentSrtPath = null;
-  let subMediaInfo = null;
+  let currentSrtPath = null;       // original transcribed SRT path
+  let currentBurnSrtPath = null;   // SRT to burn (original or translated)
 
-  // Browse file
+  // --- BROWSE ---
   subBtnBrowse.addEventListener('click', async () => {
-    subBtnBrowse.textContent = '…';
+    subBtnBrowse.textContent = '...';
     subBtnBrowse.disabled = true;
     try {
       const r = await fetch('/api/browse', { method: 'POST' });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Browse failed');
-      if (d.filePath) {
-        subFilePath.value = d.filePath;
-        toast('File selected');
-      }
-    } catch (e) {
-      toast(e.message || 'Failed to open file browser', 'error');
-    }
+      if (d.filePath) { subFilePath.value = d.filePath; toast('File selected'); }
+    } catch (e) { toast(e.message || 'Failed to open browser', 'error'); }
     subBtnBrowse.textContent = 'BROWSE';
     subBtnBrowse.disabled = false;
   });
 
-  // Analyze file
+  // --- ANALYZE ---
   subBtnAnalyze.addEventListener('click', async () => {
     const fp = subFilePath.value.trim();
-    if (!fp) {
-      toast('Please enter a file path', 'error');
-      return;
-    }
-
-    subBtnAnalyze.textContent = 'ANALYZING…';
+    if (!fp) { toast('Please enter a file path', 'error'); return; }
+    subBtnAnalyze.textContent = 'ANALYZING...';
     subBtnAnalyze.disabled = true;
-
     try {
       const r = await fetch('/api/probe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filePath: fp })
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Analyze failed');
-
-      subMediaInfo = d;
       subMetaFileName.textContent = d.fileName;
       subMetaDuration.textContent = fmtSec(d.duration);
-      subMetaResolution.textContent = `${d.width} × ${d.height}`;
+      subMetaResolution.textContent = `${d.width} x ${d.height}`;
       subProbeResult.classList.remove('hidden');
       subConfigSection.classList.remove('disabled-state');
-      toast('Video analyzed successfully');
-    } catch (e) {
-      toast(e.message || 'Probing failed', 'error');
-    }
+      toast('Video analyzed');
+    } catch (e) { toast(e.message, 'error'); }
     subBtnAnalyze.textContent = 'ANALYZE';
     subBtnAnalyze.disabled = false;
   });
 
-  // Generate subtitles
+  // --- STEP 1: TRANSCRIBE ---
   subBtnGenerate.addEventListener('click', async () => {
     const fp = subFilePath.value.trim();
     if (!fp) return;
-
     subBtnGenerate.disabled = true;
     subEmptyState.classList.add('hidden');
     subResultsSection.classList.add('hidden');
+    subTranslateSection.classList.add('disabled-state');
+    subBurnSection.classList.add('disabled-state');
     subProgressSection.classList.remove('hidden');
     subProgressFill.style.width = '0%';
-    subStatusText.textContent = 'Extracting audio and initializing transcription…';
-
+    subStatusText.textContent = 'Extracting audio and initializing transcription...';
     try {
       const r = await fetch('/api/subtitle-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filePath: fp,
-          langCode: subLanguageSelect.value
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath: fp, langCode: subLanguageSelect.value })
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Generation failed');
 
-      // Poll transcription status
       const poll = setInterval(async () => {
         try {
-          const statusRes = await fetch(`/api/status/${d.batchId}`);
-          const statusData = await statusRes.json();
-
-          if (statusData.status === 'transcribing') {
-            subProgressFill.style.width = `${statusData.progress}%`;
-            subStatusText.textContent = `Transcribing audio chunks: ${statusData.progress}%`;
-          } else if (statusData.status === 'completed') {
+          const sr = await fetch(`/api/status/${d.batchId}`);
+          const sd = await sr.json();
+          if (sd.status === 'transcribing') {
+            subProgressFill.style.width = `${sd.progress}%`;
+            subStatusText.textContent = `Transcribing audio chunks: ${sd.progress}%`;
+          } else if (sd.status === 'completed') {
             clearInterval(poll);
             subProgressSection.classList.add('hidden');
+            currentSrtPath = sd.srtPath;
+            currentBurnSrtPath = sd.srtPath; // default burn from original
+            subBtnDownloadSrt.href = sd.srtPath;
+            subResultLang.textContent = sd.detectedLanguage
+              ? `Detected: ${sd.detectedLanguage}`
+              : subLanguageSelect.options[subLanguageSelect.selectedIndex].text;
+            // Load SRT preview
+            try {
+              const txt = await (await fetch(sd.srtPath)).text();
+              subSrtPreviewText.value = txt;
+            } catch {}
             subResultsSection.classList.remove('hidden');
-            
-            // Set download href and update results metadata
-            currentSrtPath = statusData.srtPath;
-            subBtnDownloadSrt.href = statusData.srtPath;
-            subResultLang.textContent = `${statusData.detectedLanguage || subLanguageSelect.value} (${subLanguageSelect.options[subLanguageSelect.selectedIndex].text})`;
-
-            // Fetch and show SRT preview content
-            const srtContentRes = await fetch(statusData.srtPath);
-            const srtText = await srtContentRes.text();
-            subSrtPreviewText.value = srtText;
-
-            toast('Subtitles generated successfully!');
+            subTranslateSection.classList.remove('disabled-state');
+            subBurnSection.classList.remove('disabled-state');
+            toast('Subtitles generated!');
             subBtnGenerate.disabled = false;
-          } else if (statusData.status === 'failed') {
+          } else if (sd.status === 'failed') {
             clearInterval(poll);
-            throw new Error(statusData.error || 'Transcription failed');
+            throw new Error(sd.error || 'Transcription failed');
           }
         } catch (err) {
           clearInterval(poll);
@@ -2809,7 +2801,6 @@ function initSubtitles() {
           subBtnGenerate.disabled = false;
         }
       }, 1000);
-
     } catch (e) {
       subProgressSection.classList.add('hidden');
       subEmptyState.classList.remove('hidden');
@@ -2818,48 +2809,96 @@ function initSubtitles() {
     }
   });
 
-  // Burn subtitles
-  subBtnBurnVideo.addEventListener('click', async () => {
-    const fp = subFilePath.value.trim();
-    if (!fp || !currentSrtPath) return;
-
-    subBtnBurnVideo.disabled = true;
-    subBurnProgressSection.classList.remove('hidden');
-    subBurnProgressFill.style.width = '0%';
-    subBurnStatusText.textContent = 'Initializing subtitle burning...';
-    subBurnResultSection.classList.add('hidden');
-
+  // --- STEP 2: TRANSLATE ---
+  subBtnTranslate.addEventListener('click', async () => {
+    if (!currentSrtPath) { toast('Transcribe a video first', 'error'); return; }
+    const targetLang = subTargetLangSelect.value;
+    const targetLabel = subTargetLangSelect.options[subTargetLangSelect.selectedIndex].text;
+    subBtnTranslate.disabled = true;
+    subTranslatedResultSection.classList.add('hidden');
+    subTranslateProgressSection.classList.remove('hidden');
+    subTranslateProgressFill.style.width = '0%';
+    subTranslateStatusText.textContent = `Translating to ${targetLabel}...`;
     try {
-      const r = await fetch('/api/subtitle-burn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filePath: fp,
-          srtPath: currentSrtPath
-        })
+      const r = await fetch('/api/subtitle-translate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ srtPath: currentSrtPath, targetLang })
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Burning failed');
+      if (!r.ok) throw new Error(d.error || 'Translation failed');
 
-      // Poll burn status
       const poll = setInterval(async () => {
         try {
-          const statusRes = await fetch(`/api/status/${d.batchId}`);
-          const statusData = await statusRes.json();
+          const sr = await fetch(`/api/status/${d.batchId}`);
+          const sd = await sr.json();
+          if (sd.status === 'translating') {
+            subTranslateProgressFill.style.width = `${sd.progress}%`;
+            subTranslateStatusText.textContent = `Translating subtitles: ${sd.progress}%`;
+          } else if (sd.status === 'completed') {
+            clearInterval(poll);
+            subTranslateProgressSection.classList.add('hidden');
+            currentBurnSrtPath = sd.translatedSrtPath; // update burn target to translated
+            subBtnDownloadTranslatedSrt.href = sd.translatedSrtPath;
+            subTranslatedLangLabel.textContent = `Translated to: ${targetLabel}`;
+            try {
+              const txt = await (await fetch(sd.translatedSrtPath)).text();
+              subTranslatedSrtPreview.value = txt;
+            } catch {}
+            subTranslatedResultSection.classList.remove('hidden');
+            toast(`Translated to ${targetLabel}!`);
+            subBtnTranslate.disabled = false;
+          } else if (sd.status === 'failed') {
+            clearInterval(poll);
+            throw new Error(sd.error || 'Translation failed');
+          }
+        } catch (err) {
+          clearInterval(poll);
+          subTranslateProgressSection.classList.add('hidden');
+          toast(err.message, 'error');
+          subBtnTranslate.disabled = false;
+        }
+      }, 1000);
+    } catch (e) {
+      subTranslateProgressSection.classList.add('hidden');
+      toast(e.message, 'error');
+      subBtnTranslate.disabled = false;
+    }
+  });
 
-          if (statusData.status === 'burning') {
-            subBurnProgressFill.style.width = `${statusData.progress}%`;
-            subBurnStatusText.textContent = `Burning subtitles (FFmpeg): ${statusData.progress}%`;
-          } else if (statusData.status === 'completed') {
+  // --- STEP 3: BURN ---
+  subBtnBurnVideo.addEventListener('click', async () => {
+    const fp = subFilePath.value.trim();
+    if (!fp || !currentBurnSrtPath) { toast('Transcribe a video first', 'error'); return; }
+    subBtnBurnVideo.disabled = true;
+    subBurnResultSection.classList.add('hidden');
+    subBurnProgressSection.classList.remove('hidden');
+    subBurnProgressFill.style.width = '0%';
+    subBurnStatusText.textContent = 'Starting FFmpeg burn process...';
+    try {
+      const r = await fetch('/api/subtitle-burn', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath: fp, srtPath: currentBurnSrtPath })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Burn failed');
+
+      const poll = setInterval(async () => {
+        try {
+          const sr = await fetch(`/api/status/${d.batchId}`);
+          const sd = await sr.json();
+          if (sd.status === 'burning') {
+            subBurnProgressFill.style.width = `${sd.progress}%`;
+            subBurnStatusText.textContent = `Burning subtitles (FFmpeg): ${sd.progress}%`;
+          } else if (sd.status === 'completed') {
             clearInterval(poll);
             subBurnProgressSection.classList.add('hidden');
+            subBurnResultLink.href = sd.outputPath;
             subBurnResultSection.classList.remove('hidden');
-            subBurnResultLink.href = statusData.outputPath;
-            toast('Subtitles burned into video successfully!');
+            toast('Subtitles burned into video!');
             subBtnBurnVideo.disabled = false;
-          } else if (statusData.status === 'failed') {
+          } else if (sd.status === 'failed') {
             clearInterval(poll);
-            throw new Error(statusData.error || 'Burning failed');
+            throw new Error(sd.error || 'Burning failed');
           }
         } catch (err) {
           clearInterval(poll);
@@ -2868,7 +2907,6 @@ function initSubtitles() {
           subBtnBurnVideo.disabled = false;
         }
       }, 1000);
-
     } catch (e) {
       subBurnProgressSection.classList.add('hidden');
       toast(e.message, 'error');
