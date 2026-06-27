@@ -1,0 +1,11 @@
+node_modules/
+shorts/
+temp/
+template/
+*.mp4
+*.webm
+*.avi
+*.mkv
+*.mov
+*.log
+.DS_Store
