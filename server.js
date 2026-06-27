@@ -790,6 +790,144 @@ app.get('/api/list-shorts', (req, res) => {
   res.json({ success: true, shorts: results });
 });
 
+// API: SUBTITLE GENERATOR
+app.post('/api/subtitle-generate', (req, res) => {
+  const { filePath, langCode = 'en-US' } = req.body;
+  if (!filePath) return res.status(400).json({ error: 'filePath required' });
+
+  const absPath = path.resolve(filePath);
+  if (!fs.existsSync(absPath)) return res.status(404).json({ error: 'File not found' });
+
+  const uniqueId = `sub_${Date.now()}`;
+  const srtName = `subs_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}.srt`;
+  const srtPath = path.join(SHORTS_DIR, srtName);
+
+  activeBatches[uniqueId] = {
+    batchId: uniqueId,
+    status: 'transcribing',
+    progress: 0,
+    srtPath: `/shorts/${srtName}`,
+    error: null
+  };
+
+  res.json({ success: true, batchId: uniqueId });
+
+  // Run python script asynchronously
+  (async () => {
+    try {
+      const scriptPath = path.join(__dirname, 'transcribe.py');
+      const py = spawn('python', [
+        scriptPath,
+        '--input', absPath,
+        '--lang', langCode,
+        '--output_srt', srtPath
+      ]);
+
+      py.stdout.on('data', data => {
+        const line = data.toString().trim();
+        console.log(`[SUBTITLE] PyOut: ${line}`);
+        
+        const match = line.match(/PROGRESS:\s*(\d+)%/);
+        if (match) {
+          activeBatches[uniqueId].progress = parseInt(match[1]);
+        }
+        
+        const langMatch = line.match(/Detected language:\s*([\w-]+)/);
+        if (langMatch) {
+          activeBatches[uniqueId].detectedLanguage = langMatch[1];
+        }
+      });
+
+      py.stderr.on('data', data => {
+        console.error(`[SUBTITLE] PyErr: ${data.toString()}`);
+      });
+
+      py.on('close', code => {
+        if (code === 0 && fs.existsSync(srtPath)) {
+          activeBatches[uniqueId].status = 'completed';
+          activeBatches[uniqueId].progress = 100;
+          console.log(`[SUBTITLE] Completed: ${srtPath}`);
+        } else {
+          activeBatches[uniqueId].status = 'failed';
+          activeBatches[uniqueId].error = 'Transcription failed or python error';
+        }
+      });
+    } catch (err) {
+      activeBatches[uniqueId].status = 'failed';
+      activeBatches[uniqueId].error = err.message;
+    }
+  })();
+});
+
+// API: SUBTITLE BURN
+app.post('/api/subtitle-burn', (req, res) => {
+  const { filePath, srtPath } = req.body;
+  if (!filePath || !srtPath) return res.status(400).json({ error: 'filePath and srtPath required' });
+
+  const absVideoPath = path.resolve(filePath);
+  const srtFilename = path.basename(srtPath);
+  const absSrtPath = path.join(SHORTS_DIR, srtFilename);
+
+  if (!fs.existsSync(absVideoPath)) return res.status(404).json({ error: 'Video file not found' });
+  if (!fs.existsSync(absSrtPath)) return res.status(404).json({ error: 'SRT subtitle file not found' });
+
+  const uniqueId = `burn_${Date.now()}`;
+  const outName = `subbed_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}.mp4`;
+  const outPath = path.join(SHORTS_DIR, outName);
+
+  activeBatches[uniqueId] = {
+    batchId: uniqueId,
+    status: 'burning',
+    progress: 0,
+    outputPath: `/shorts/${outName}`,
+    error: null
+  };
+
+  res.json({ success: true, batchId: uniqueId });
+
+  (async () => {
+    try {
+      activeBatches[uniqueId].progress = 10;
+      
+      const localSrtTemp = path.join(__dirname, 'temp_burn.srt');
+      fs.copyFileSync(absSrtPath, localSrtTemp);
+
+      const args = [
+        '-i', absVideoPath,
+        '-vf', 'subtitles=temp_burn.srt',
+        '-c:v', 'libx264', '-preset', 'fast', '-crf', '22',
+        '-c:a', 'copy',
+        '-y', outPath
+      ];
+
+      console.log(`[BURN] FFmpeg args: ffmpeg ${args.join(' ')}`);
+      
+      const probe = await probeFile(absVideoPath);
+      const duration = parseFloat(probe.format.duration || 30);
+
+      await runFFmpegProgress(args, duration, pct => {
+        activeBatches[uniqueId].progress = 15 + Math.round((pct / 100) * 80);
+      });
+
+      if (fs.existsSync(localSrtTemp)) {
+        try { fs.unlinkSync(localSrtTemp); } catch {}
+      }
+
+      if (fs.existsSync(outPath)) {
+        activeBatches[uniqueId].status = 'completed';
+        activeBatches[uniqueId].progress = 100;
+        console.log(`[BURN] Completed: ${outPath}`);
+      } else {
+        throw new Error('Subtitled video was not created');
+      }
+    } catch (err) {
+      console.error(`[BURN] Error:`, err.message);
+      activeBatches[uniqueId].status = 'failed';
+      activeBatches[uniqueId].error = err.message;
+    }
+  })();
+});
+
 // -----------------------------------------------------------------------------
 // API: THUMBNAIL AT TIMESTAMP
 // Generates a quick JPEG frame from a video on-the-fly and pipes it directly to response.

@@ -114,6 +114,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initTabNav();
   initCropStudio();
   initRandomGen();
+  initSubtitles();
 });
 
 // |â‚¬|â‚¬|â‚¬ Toast |â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬|â‚¬
@@ -905,6 +906,8 @@ function initTabNav() {
         panel = document.getElementById('panelRandomGen');
       } else if (target === 'cropStudio') {
         panel = document.getElementById('panelCropStudio');
+      } else if (target === 'subtitles') {
+        panel = document.getElementById('panelSubtitles');
       }
       if (panel) panel.classList.remove('hidden');
     });
@@ -2659,5 +2662,217 @@ async function pollRandomRender(batchId) {
         reject(e);
       }
     }, 500);
+  });
+}
+
+function initSubtitles() {
+  const subFilePath = $('subFilePath');
+  const subBtnBrowse = $('subBtnBrowse');
+  const subBtnAnalyze = $('subBtnAnalyze');
+  const subProbeResult = $('subProbeResult');
+  const subMetaFileName = $('subMetaFileName');
+  const subMetaDuration = $('subMetaDuration');
+  const subMetaResolution = $('subMetaResolution');
+  const subConfigSection = $('subConfigSection');
+  const subLanguageSelect = $('subLanguageSelect');
+  const subBtnGenerate = $('subBtnGenerate');
+  const subEmptyState = $('subEmptyState');
+  const subProgressSection = $('subProgressSection');
+  const subProgressFill = $('subProgressFill');
+  const subStatusText = $('subStatusText');
+  const subResultsSection = $('subResultsSection');
+  const subResultLang = $('subResultLang');
+  const subBtnDownloadSrt = $('subBtnDownloadSrt');
+  const subBtnBurnVideo = $('subBtnBurnVideo');
+  const subSrtPreviewText = $('subSrtPreviewText');
+  const subBurnProgressSection = $('subBurnProgressSection');
+  const subBurnProgressFill = $('subBurnProgressFill');
+  const subBurnStatusText = $('subBurnStatusText');
+  const subBurnResultSection = $('subBurnResultSection');
+  const subBurnResultLink = $('subBurnResultLink');
+
+  let currentSrtPath = null;
+  let subMediaInfo = null;
+
+  // Browse file
+  subBtnBrowse.addEventListener('click', async () => {
+    subBtnBrowse.textContent = '…';
+    subBtnBrowse.disabled = true;
+    try {
+      const r = await fetch('/api/browse', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Browse failed');
+      if (d.filePath) {
+        subFilePath.value = d.filePath;
+        toast('File selected');
+      }
+    } catch (e) {
+      toast(e.message || 'Failed to open file browser', 'error');
+    }
+    subBtnBrowse.textContent = 'BROWSE';
+    subBtnBrowse.disabled = false;
+  });
+
+  // Analyze file
+  subBtnAnalyze.addEventListener('click', async () => {
+    const fp = subFilePath.value.trim();
+    if (!fp) {
+      toast('Please enter a file path', 'error');
+      return;
+    }
+
+    subBtnAnalyze.textContent = 'ANALYZING…';
+    subBtnAnalyze.disabled = true;
+
+    try {
+      const r = await fetch('/api/probe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath: fp })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Analyze failed');
+
+      subMediaInfo = d;
+      subMetaFileName.textContent = d.fileName;
+      subMetaDuration.textContent = fmtSec(d.duration);
+      subMetaResolution.textContent = `${d.width} × ${d.height}`;
+      subProbeResult.classList.remove('hidden');
+      subConfigSection.classList.remove('disabled-state');
+      toast('Video analyzed successfully');
+    } catch (e) {
+      toast(e.message || 'Probing failed', 'error');
+    }
+    subBtnAnalyze.textContent = 'ANALYZE';
+    subBtnAnalyze.disabled = false;
+  });
+
+  // Generate subtitles
+  subBtnGenerate.addEventListener('click', async () => {
+    const fp = subFilePath.value.trim();
+    if (!fp) return;
+
+    subBtnGenerate.disabled = true;
+    subEmptyState.classList.add('hidden');
+    subResultsSection.classList.add('hidden');
+    subProgressSection.classList.remove('hidden');
+    subProgressFill.style.width = '0%';
+    subStatusText.textContent = 'Extracting audio and initializing transcription…';
+
+    try {
+      const r = await fetch('/api/subtitle-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filePath: fp,
+          langCode: subLanguageSelect.value
+        })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Generation failed');
+
+      // Poll transcription status
+      const poll = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/status/${d.batchId}`);
+          const statusData = await statusRes.json();
+
+          if (statusData.status === 'transcribing') {
+            subProgressFill.style.width = `${statusData.progress}%`;
+            subStatusText.textContent = `Transcribing audio chunks: ${statusData.progress}%`;
+          } else if (statusData.status === 'completed') {
+            clearInterval(poll);
+            subProgressSection.classList.add('hidden');
+            subResultsSection.classList.remove('hidden');
+            
+            // Set download href and update results metadata
+            currentSrtPath = statusData.srtPath;
+            subBtnDownloadSrt.href = statusData.srtPath;
+            subResultLang.textContent = `${statusData.detectedLanguage || subLanguageSelect.value} (${subLanguageSelect.options[subLanguageSelect.selectedIndex].text})`;
+
+            // Fetch and show SRT preview content
+            const srtContentRes = await fetch(statusData.srtPath);
+            const srtText = await srtContentRes.text();
+            subSrtPreviewText.value = srtText;
+
+            toast('Subtitles generated successfully!');
+            subBtnGenerate.disabled = false;
+          } else if (statusData.status === 'failed') {
+            clearInterval(poll);
+            throw new Error(statusData.error || 'Transcription failed');
+          }
+        } catch (err) {
+          clearInterval(poll);
+          subProgressSection.classList.add('hidden');
+          subEmptyState.classList.remove('hidden');
+          toast(err.message, 'error');
+          subBtnGenerate.disabled = false;
+        }
+      }, 1000);
+
+    } catch (e) {
+      subProgressSection.classList.add('hidden');
+      subEmptyState.classList.remove('hidden');
+      toast(e.message, 'error');
+      subBtnGenerate.disabled = false;
+    }
+  });
+
+  // Burn subtitles
+  subBtnBurnVideo.addEventListener('click', async () => {
+    const fp = subFilePath.value.trim();
+    if (!fp || !currentSrtPath) return;
+
+    subBtnBurnVideo.disabled = true;
+    subBurnProgressSection.classList.remove('hidden');
+    subBurnProgressFill.style.width = '0%';
+    subBurnStatusText.textContent = 'Initializing subtitle burning...';
+    subBurnResultSection.classList.add('hidden');
+
+    try {
+      const r = await fetch('/api/subtitle-burn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filePath: fp,
+          srtPath: currentSrtPath
+        })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Burning failed');
+
+      // Poll burn status
+      const poll = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/status/${d.batchId}`);
+          const statusData = await statusRes.json();
+
+          if (statusData.status === 'burning') {
+            subBurnProgressFill.style.width = `${statusData.progress}%`;
+            subBurnStatusText.textContent = `Burning subtitles (FFmpeg): ${statusData.progress}%`;
+          } else if (statusData.status === 'completed') {
+            clearInterval(poll);
+            subBurnProgressSection.classList.add('hidden');
+            subBurnResultSection.classList.remove('hidden');
+            subBurnResultLink.href = statusData.outputPath;
+            toast('Subtitles burned into video successfully!');
+            subBtnBurnVideo.disabled = false;
+          } else if (statusData.status === 'failed') {
+            clearInterval(poll);
+            throw new Error(statusData.error || 'Burning failed');
+          }
+        } catch (err) {
+          clearInterval(poll);
+          subBurnProgressSection.classList.add('hidden');
+          toast(err.message, 'error');
+          subBtnBurnVideo.disabled = false;
+        }
+      }, 1000);
+
+    } catch (e) {
+      subBurnProgressSection.classList.add('hidden');
+      toast(e.message, 'error');
+      subBtnBurnVideo.disabled = false;
+    }
   });
 }

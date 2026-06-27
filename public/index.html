@@ -37,6 +37,10 @@
         <span class="tab-icon">🎞</span> Crop Studio
         <span class="tab-badge">9:16</span>
       </button>
+      <button class="app-tab" id="tabSubtitles" data-tab="subtitles">
+        <span class="tab-icon">💬</span> Subtitle Studio
+        <span class="tab-badge">Auto</span>
+      </button>
     </nav>
 
     <!-- Tab Panel: Batch Generator -->
@@ -768,6 +772,127 @@
 
       </div><!-- /crop-studio-layout -->
     </div><!-- /panelCropStudio -->
+
+    <!-- ══ TAB PANEL: SUBTITLE STUDIO ══════════════════════════════════════ -->
+    <div class="tab-panel hidden" id="panelSubtitles">
+      <main class="app-grid">
+        <!-- LEFT COLUMN: SETTINGS -->
+        <section class="ops-panel glass-card">
+          <div class="panel-header">
+            <span class="step-num">01</span>
+            <h2>SUBTITLE SETUP</h2>
+          </div>
+          
+          <div class="input-group">
+            <label class="neon-label">Local Video File</label>
+            <div class="path-input-wrapper">
+              <input type="text" id="subFilePath" placeholder="Click BROWSE or paste absolute path…" autocomplete="off" />
+              <button id="subBtnBrowse" class="glow-btn browse-btn">BROWSE</button>
+              <button id="subBtnAnalyze" class="glow-btn">ANALYZE</button>
+            </div>
+          </div>
+
+          <div id="subProbeResult" class="probe-result-card hidden">
+            <div class="probe-meta-grid">
+              <div class="meta-item"><span class="label">FILE</span><span id="subMetaFileName" class="value">—</span></div>
+               <div class="meta-item"><span class="label">DURATION</span><span id="subMetaDuration" class="value">—</span></div>
+               <div class="meta-item"><span class="label">RESOLUTION</span><span id="subMetaResolution" class="value">—</span></div>
+            </div>
+          </div>
+
+          <div id="subConfigSection" class="config-section disabled-state" style="margin-top: 1.2rem;">
+            <div class="panel-header">
+              <span class="step-num">02</span>
+              <h2>TRANSCRIPTION SETTINGS</h2>
+            </div>
+
+            <div class="input-group">
+              <label class="neon-label">Language Detection Mode</label>
+              <select id="subLanguageSelect" class="glow-select" style="width: 100%;">
+                <option value="auto" selected>🤖 Auto-Detect Language (Scan Mode)</option>
+                <option value="en-US">🇺🇸 English (en-US)</option>
+                <option value="hi-IN">🇮🇳 Hindi (hi-IN)</option>
+                <option value="te-IN">🇮🇳 Telugu (te-IN)</option>
+                <option value="ta-IN">🇮🇳 Tamil (ta-IN)</option>
+                <option value="es-ES">🇪🇸 Spanish (es-ES)</option>
+                <option value="fr-FR">🇫🇷 French (fr-FR)</option>
+                <option value="de-DE">🇩🇪 German (de-DE)</option>
+              </select>
+            </div>
+
+            <button id="subBtnGenerate" class="glow-btn generate-btn" style="width: 100%; margin-top: 1rem;">
+              💬 GENERATE SUBTITLES (.SRT)
+            </button>
+          </div>
+        </section>
+
+        <!-- RIGHT COLUMN: RESULTS & PREVIEW -->
+        <section class="results-panel glass-card">
+          <div class="panel-header">
+            <span class="step-num">03</span>
+            <h2>SUBTITLE STUDIO HUB</h2>
+          </div>
+
+          <!-- Empty State -->
+          <div id="subEmptyState" class="empty-state">
+            <p class="cyber-dim">Select a video and launch transcription to generate subtitles</p>
+          </div>
+
+          <!-- Progress Section -->
+          <div id="subProgressSection" class="hidden">
+            <div class="progress-track" style="margin-bottom: 0.5rem;">
+              <div id="subProgressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p id="subStatusText" class="cyber-dim" style="font-size: 0.75rem;">Initializing transcription…</p>
+          </div>
+
+          <!-- Results section -->
+          <div id="subResultsSection" class="hidden" style="display: flex; flex-direction: column; gap: 1rem;">
+            <h3 class="neon-label" style="color: #22c55e;">✅ SRT Generated successfully</h3>
+             
+            <div class="proposed-item" style="border-color: rgba(34, 197, 94, 0.25);">
+              <div class="proposed-left" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+                <span style="font-size: 0.7rem; color: rgba(255,255,255,0.4);">Detected Language / Mode</span>
+                <strong id="subResultLang" style="color: #fff; font-size: 0.78rem;">-</strong>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 0.6rem;">
+              <a id="subBtnDownloadSrt" href="#" download class="glow-btn" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.75rem; background: var(--accent-purple); color: #fff; border-color: rgba(168,85,247,0.4); display: flex; align-items: center; justify-content: center;">
+                📥 DOWNLOAD SRT
+              </a>
+              <button id="subBtnBurnVideo" class="glow-btn" style="flex: 1; font-size: 0.75rem; background: var(--accent-cyan); color: #000;">
+                🔥 BURN INTO VIDEO
+              </button>
+            </div>
+
+            <!-- Preview of subtitles -->
+            <div class="input-group" style="margin-top: 0.5rem;">
+              <label class="neon-label">SRT File Content Preview</label>
+              <textarea id="subSrtPreviewText" readonly style="width: 100%; height: 180px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: var(--text-secondary); font-family: monospace; font-size: 0.7rem; padding: 0.5rem; resize: none;"></textarea>
+            </div>
+          </div>
+
+          <!-- Burning Status -->
+          <div id="subBurnProgressSection" class="hidden" style="margin-top: 1rem;">
+            <div class="progress-track" style="margin-bottom: 0.5rem;">
+              <div id="subBurnProgressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p id="subBurnStatusText" class="cyber-dim" style="font-size: 0.75rem;">Burning subtitles into video…</p>
+          </div>
+
+          <!-- Burn Success Card -->
+          <div id="subBurnResultSection" class="hidden glass-card" style="margin-top: 1rem; padding: 0.8rem;">
+            <p class="neon-label" style="color: #22c55e; margin-bottom: 0.5rem;">🔥 Video Rendered Successfully</p>
+            <a id="subBurnResultLink" href="#" target="_blank" class="glow-btn" style="display: block; text-align: center; font-size: 0.75rem; text-decoration: none;">
+              ▶ PLAY SUBTITLED VIDEO
+            </a>
+          </div>
+
+        </section>
+      </main>
+    </div>
+
     <!-- Footer Slogan -->
     <footer class="app-footer" style="text-align: center; margin-top: 2.5rem; padding: 1.5rem 0 1rem; border-top: 1px solid rgba(255,255,255,0.05); font-family: var(--font-display); font-size: 0.8rem; font-weight: 600; letter-spacing: 4px; color: var(--text-secondary); text-transform: uppercase;">
       Justify Audience Experience.
