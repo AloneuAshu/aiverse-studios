@@ -2071,6 +2071,12 @@ function initRandomGen() {
   let proposedClips = [];
   let currentPreviewIndex = 0;
 
+  // Manual Cutter state
+  let manualQueue = [];
+  let manualStartSec = null;
+  let manualDurSec = 5;
+  let manualMediaPath = null;
+
   // Duration button selection
   const durBtns = document.querySelectorAll('.random-dur-btn');
   durBtns.forEach(btn => {
@@ -2128,6 +2134,7 @@ function initRandomGen() {
       
       randomProbeResult.classList.remove('hidden');
       randomConfigSection.classList.remove('disabled-state');
+      activateManualCutter(fp, d.duration);
       toast('Video analyzed successfully');
     } catch (e) {
       toast(e.message || 'Failed to analyze video', 'error');
@@ -2140,6 +2147,246 @@ function initRandomGen() {
   randomFilePath.addEventListener('keydown', e => {
     if (e.key === 'Enter') randomBtnProbe.click();
   });
+
+  // ─── MANUAL CLIP CUTTER ────────────────────────────────────────────────────
+
+  function fmtTime(sec) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    const ms = Math.floor((sec % 1) * 10);
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${ms}`;
+  }
+
+  function activateManualCutter(filePath, duration) {
+    manualMediaPath = filePath;
+    const section = $('randomManualSection');
+    const player = $('manualPreviewPlayer');
+    const scrubber = $('manualScrubber');
+    const timeDisplay = $('manualCurrentTime');
+
+    section.classList.remove('disabled-state');
+    // Load video into mini player
+    player.src = '/api/serve-video?path=' + encodeURIComponent(filePath);
+    scrubber.max = duration;
+    scrubber.step = 0.5;
+    scrubber.value = 0;
+    timeDisplay.textContent = '00:00:00.0';
+
+    // Sync scrubber → player
+    scrubber.addEventListener('input', () => {
+      player.currentTime = parseFloat(scrubber.value);
+      timeDisplay.textContent = fmtTime(player.currentTime);
+    });
+    // Sync player → scrubber while playing
+    player.addEventListener('timeupdate', () => {
+      if (!scrubber.matches(':active')) {
+        scrubber.value = player.currentTime;
+        timeDisplay.textContent = fmtTime(player.currentTime);
+      }
+    });
+  }
+
+  // SET START POINT button
+  const manualBtnSetStart = $('manualBtnSetStart');
+  if (manualBtnSetStart) {
+    manualBtnSetStart.addEventListener('click', () => {
+      const player = $('manualPreviewPlayer');
+      if (!player.src || player.src === window.location.href) {
+        toast('Analyze a video first', 'error'); return;
+      }
+      manualStartSec = player.currentTime;
+      $('manualStartDisplay').textContent = fmtTime(manualStartSec);
+      // Flash the badge
+      manualBtnSetStart.textContent = '✅ START SET';
+      setTimeout(() => { manualBtnSetStart.textContent = '📍 SET START'; }, 1200);
+      toast(`Start set: ${fmtTime(manualStartSec)}`);
+    });
+  }
+
+  // Manual duration buttons
+  const manualDurBtns = document.querySelectorAll('.manual-dur-btn');
+  manualDurBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      manualDurBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      manualDurSec = parseInt(btn.dataset.dur);
+    });
+  });
+
+  // ADD TO QUEUE button
+  const manualBtnAddClip = $('manualBtnAddClip');
+  if (manualBtnAddClip) {
+    manualBtnAddClip.addEventListener('click', () => {
+      if (manualStartSec === null) {
+        toast('Set a START POINT first using the scrubber', 'error'); return;
+      }
+      if (!manualMediaPath) {
+        toast('Analyze a video first', 'error'); return;
+      }
+      manualQueue.push({ start: manualStartSec, duration: manualDurSec, pan: 0 });
+      renderManualQueue();
+      toast(`Clip added: ${fmtTime(manualStartSec)} + ${manualDurSec}s`);
+    });
+  }
+
+  // CLEAR ALL button
+  const manualBtnClearQueue = $('manualBtnClearQueue');
+  if (manualBtnClearQueue) {
+    manualBtnClearQueue.addEventListener('click', () => {
+      manualQueue = [];
+      renderManualQueue();
+    });
+  }
+
+  function renderManualQueue() {
+    const list = $('manualQueueList');
+    const wrapper = $('manualQueueWrapper');
+    const countEl = $('manualQueueCount');
+    const renderCountEl = $('manualRenderCount');
+    if (!list) return;
+
+    countEl.textContent = manualQueue.length;
+    renderCountEl.textContent = manualQueue.length;
+
+    if (manualQueue.length === 0) {
+      wrapper.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+    wrapper.classList.remove('hidden');
+    list.innerHTML = '';
+    manualQueue.forEach((clip, i) => {
+      const item = document.createElement('div');
+      item.className = 'manual-queue-item';
+      item.innerHTML = `
+        <span class="mqi-index">#${i + 1}</span>
+        <span class="mqi-info">${fmtTime(clip.start)}</span>
+        <span class="mqi-dur">${clip.duration}s</span>
+        <button class="mqi-preview" title="Preview">▶</button>
+        <button class="mqi-remove" title="Remove">✕</button>
+      `;
+      // Preview: seek the player to this clip's start
+      item.querySelector('.mqi-preview').addEventListener('click', () => {
+        const player = $('manualPreviewPlayer');
+        const scrubber = $('manualScrubber');
+        player.currentTime = clip.start;
+        scrubber.value = clip.start;
+        $('manualCurrentTime').textContent = fmtTime(clip.start);
+        player.play();
+        // Pause after duration
+        setTimeout(() => player.pause(), clip.duration * 1000);
+      });
+      // Remove
+      item.querySelector('.mqi-remove').addEventListener('click', () => {
+        manualQueue.splice(i, 1);
+        renderManualQueue();
+      });
+      list.appendChild(item);
+    });
+  }
+
+  // RENDER MANUAL CLIPS button
+  const manualBtnRender = $('manualBtnRender');
+  if (manualBtnRender) {
+    manualBtnRender.addEventListener('click', async () => {
+      if (manualQueue.length === 0) { toast('Queue is empty', 'error'); return; }
+      if (!manualMediaPath) { toast('No video selected', 'error'); return; }
+
+      const format = $('manualFormat').value;
+      const fitMode = $('manualFitMode').value;
+      const progSection = $('manualProgressSection');
+      const progFill = $('manualProgressFill');
+      const statusText = $('manualStatusText');
+
+      manualBtnRender.disabled = true;
+      progSection.classList.remove('hidden');
+
+      let completedClips = [];
+      const total = manualQueue.length;
+
+      for (let i = 0; i < total; i++) {
+        const clip = manualQueue[i];
+        statusText.textContent = `Rendering clip ${i + 1} of ${total}…`;
+        progFill.style.width = `${Math.round((i / total) * 100)}%`;
+
+        try {
+          const r = await fetch('/api/crop-render', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filePath: manualMediaPath,
+              clips: [{ start: clip.start, duration: clip.duration, pan: 0 }],
+              format,
+              fitMode
+            })
+          });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || 'Render failed');
+
+          // Poll until done
+          await new Promise((resolve, reject) => {
+            const poll = setInterval(async () => {
+              try {
+                const sr = await fetch(`/api/status/${d.batchId}`);
+                const sd = await sr.json();
+                if (sd.status === 'completed') {
+                  clearInterval(poll);
+                  const done = sd.results || [];
+                  completedClips.push(...done);
+                  resolve();
+                } else if (sd.status === 'failed') {
+                  clearInterval(poll);
+                  reject(new Error(sd.error || 'Clip failed'));
+                } else {
+                  // in-progress: update sub-progress
+                  if (sd.progress != null) {
+                    const base = (i / total) * 100;
+                    const sub = (sd.progress / 100) * (100 / total);
+                    progFill.style.width = `${Math.round(base + sub)}%`;
+                  }
+                }
+              } catch (err) {
+                clearInterval(poll);
+                reject(err);
+              }
+            }, 800);
+          });
+        } catch (err) {
+          toast(`Clip ${i + 1} failed: ${err.message}`, 'error');
+        }
+      }
+
+      progFill.style.width = '100%';
+      statusText.textContent = `Done! ${completedClips.length} clip(s) exported.`;
+
+      // Show in results section
+      if (completedClips.length > 0) {
+        const resultsSection = $('randomResultsSection');
+        const resultsList = $('randomResultsList');
+        $('randomEmptyState').classList.add('hidden');
+        resultsSection.classList.remove('hidden');
+        completedClips.forEach(clip => {
+          const card = document.createElement('div');
+          card.className = 'result-item';
+          card.innerHTML = `
+            <span class="result-name">${clip.name || 'manual_clip.mp4'}</span>
+            <div class="result-actions">
+              <a href="${clip.url}" target="_blank" class="proposed-btn preview-btn">▶ Play</a>
+              <a href="${clip.url}" download class="proposed-btn">⬇ Save</a>
+            </div>
+          `;
+          resultsList.prepend(card);
+        });
+        toast(`${completedClips.length} manual clip(s) rendered!`);
+      }
+
+      setTimeout(() => progSection.classList.add('hidden'), 2000);
+      manualBtnRender.disabled = false;
+      // Refresh library
+      randomBtnRefreshLibrary.click();
+    });
+  }
 
   // Update pan slider display value
   function updatePanSliderLabel(pan) {
