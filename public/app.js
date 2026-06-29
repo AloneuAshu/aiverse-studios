@@ -2292,12 +2292,36 @@ function initRandomGen() {
     manualBtnRender.addEventListener('click', async () => {
       if (manualQueue.length === 0) { toast('Queue is empty', 'error'); return; }
       if (!manualMediaPath) { toast('No video selected', 'error'); return; }
+      if (!randomMediaInfo) { toast('Analyze a video first', 'error'); return; }
 
       const format = $('manualFormat').value;
       const fitMode = $('manualFitMode').value;
       const progSection = $('manualProgressSection');
       const progFill = $('manualProgressFill');
       const statusText = $('manualStatusText');
+
+      // Smart 9:16 portrait crop from source dimensions
+      // If landscape: center-crop to portrait column (height stays, width = H * 9/16)
+      // If portrait already: use full frame
+      const srcW = randomMediaInfo.width;
+      const srcH = randomMediaInfo.height;
+      let cropW, cropH, cropX, cropY;
+      if (srcW > srcH) {
+        // Landscape source → take a portrait center-slice
+        cropH = srcH;
+        cropW = Math.round((srcH * 9) / 16);
+        cropX = Math.round((srcW - cropW) / 2);
+        cropY = 0;
+      } else {
+        // Already portrait or square → full frame
+        cropW = srcW;
+        cropH = srcH;
+        cropX = 0;
+        cropY = 0;
+      }
+      // Ensure even numbers (FFmpeg requirement)
+      cropW = Math.round(cropW / 2) * 2;
+      cropH = Math.round(cropH / 2) * 2;
 
       manualBtnRender.disabled = true;
       progSection.classList.remove('hidden');
@@ -2316,15 +2340,20 @@ function initRandomGen() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               filePath: manualMediaPath,
-              clips: [{ start: clip.start, duration: clip.duration, pan: 0 }],
-              format,
-              fitMode
+              startSec: clip.start,
+              duration: clip.duration,
+              cropX,
+              cropY,
+              cropW,
+              cropH,
+              fitMode,
+              format
             })
           });
           const d = await r.json();
           if (!r.ok) throw new Error(d.error || 'Render failed');
 
-          // Poll until done
+          // Poll until done — crop-render uses activeBatches[batchId].jobs[0]
           await new Promise((resolve, reject) => {
             const poll = setInterval(async () => {
               try {
@@ -2332,19 +2361,27 @@ function initRandomGen() {
                 const sd = await sr.json();
                 if (sd.status === 'completed') {
                   clearInterval(poll);
-                  const done = sd.results || [];
-                  completedClips.push(...done);
+                  // crop-render stores result in jobs[0]
+                  const job = sd.jobs && sd.jobs[0];
+                  if (job && job.outputPath) {
+                    completedClips.push({
+                      url: job.outputPath,
+                      thumb: job.thumbnailPath,
+                      name: job.outputFileName || `manual_clip_${i + 1}.mp4`
+                    });
+                  }
                   resolve();
                 } else if (sd.status === 'failed') {
                   clearInterval(poll);
-                  reject(new Error(sd.error || 'Clip failed'));
+                  const job = sd.jobs && sd.jobs[0];
+                  reject(new Error((job && job.error) || 'Clip render failed'));
                 } else {
-                  // in-progress: update sub-progress
-                  if (sd.progress != null) {
-                    const base = (i / total) * 100;
-                    const sub = (sd.progress / 100) * (100 / total);
-                    progFill.style.width = `${Math.round(base + sub)}%`;
-                  }
+                  // in-progress: show per-clip sub-progress
+                  const job = sd.jobs && sd.jobs[0];
+                  const jobPct = (job && job.progress) || 0;
+                  const base = (i / total) * 100;
+                  const sub = (jobPct / 100) * (100 / total);
+                  progFill.style.width = `${Math.round(base + sub)}%`;
                 }
               } catch (err) {
                 clearInterval(poll);
@@ -2369,8 +2406,12 @@ function initRandomGen() {
         completedClips.forEach(clip => {
           const card = document.createElement('div');
           card.className = 'result-item';
+          const thumb = clip.thumb ? `<img src="${clip.thumb}" style="width:40px;height:72px;object-fit:cover;border-radius:4px;flex-shrink:0;">` : '';
           card.innerHTML = `
-            <span class="result-name">${clip.name || 'manual_clip.mp4'}</span>
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+              ${thumb}
+              <span class="result-name">${clip.name}</span>
+            </div>
             <div class="result-actions">
               <a href="${clip.url}" target="_blank" class="proposed-btn preview-btn">▶ Play</a>
               <a href="${clip.url}" download class="proposed-btn">⬇ Save</a>
@@ -2381,9 +2422,8 @@ function initRandomGen() {
         toast(`${completedClips.length} manual clip(s) rendered!`);
       }
 
-      setTimeout(() => progSection.classList.add('hidden'), 2000);
+      setTimeout(() => progSection.classList.add('hidden'), 3000);
       manualBtnRender.disabled = false;
-      // Refresh library
       randomBtnRefreshLibrary.click();
     });
   }
