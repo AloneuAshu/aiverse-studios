@@ -532,6 +532,30 @@
               </div>
             </div>
 
+            <!-- Interactive Alignment Station (Bigger, User-Friendly Controls) -->
+            <div id="manualAlignStation" style="margin-bottom: 0.8rem; background: rgba(6,182,212,0.03); border: 1px solid rgba(6,182,212,0.15); padding: 0.6rem 0.8rem; border-radius: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label id="manualAlignLabel" class="neon-label" style="font-size: 0.65rem; color: var(--accent-cyan); letter-spacing: 0.05em;">↔ CROP ALIGNMENT (NEW CLIP)</label>
+                <span id="manualPanVal" style="color: var(--accent-cyan); font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: bold; background: rgba(6,182,212,0.1); padding: 2px 6px; border-radius: 4px;">Center</span>
+              </div>
+              
+              <!-- Big Snap Buttons -->
+              <div style="display: flex; gap: 0.4rem; margin-bottom: 0.6rem;">
+                <button type="button" id="manualSnapL" class="glow-btn" style="flex: 1; padding: 0.4rem 0; font-size: 0.68rem; background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.1);">◀ LEFT</button>
+                <button type="button" id="manualSnapC" class="glow-btn" style="flex: 1; padding: 0.4rem 0; font-size: 0.68rem; background: rgba(168,85,247,0.1); border-color: rgba(168,85,247,0.3); color: var(--accent-purple);">⊙ CENTER</button>
+                <button type="button" id="manualSnapR" class="glow-btn" style="flex: 1; padding: 0.4rem 0; font-size: 0.68rem; background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.1);">RIGHT ▶</button>
+              </div>
+
+              <!-- Big Range Slider -->
+              <input type="range" id="manualPanSlider" min="-1" max="1" step="0.02" value="0" class="crop-slider" style="width: 100%; display: block;" />
+              
+              <div style="display: flex; justify-content: space-between; margin-top: 0.3rem; font-size: 0.56rem; color: rgba(255,255,255,0.35);">
+                <span>◀ Full Left</span>
+                <span>Double-click slider to reset</span>
+                <span>Full Right ▶</span>
+              </div>
+            </div>
+
             <!-- Add to Queue -->
             <button id="manualBtnAddClip" class="glow-btn" style="width: 100%; margin-bottom: 0.8rem; background: linear-gradient(135deg,rgba(168,85,247,0.2),rgba(59,130,246,0.15)); border-color: rgba(168,85,247,0.45);">
               ➕ ADD TO QUEUE

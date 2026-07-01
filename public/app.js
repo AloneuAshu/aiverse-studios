@@ -2077,6 +2077,7 @@ function initRandomGen() {
   let manualDurSec = 5;
   let manualMediaPath = null;
   let manualPanValue = 0;  // -1 = full left, 0 = center, 1 = full right
+  let selectedQueueIndex = -1; // -1 means editing NEW CLIP, >= 0 means editing queued clip index
 
   // Duration button selection
   const durBtns = document.querySelectorAll('.random-dur-btn');
@@ -2144,6 +2145,298 @@ function initRandomGen() {
       randomBtnProbe.disabled = false;
     }
   });
+
+  randomFilePath.addEventListener('keydown', e => {
+    if (e.key === 'Enter') randomBtnProbe.click();
+  });
+
+  // ─── MANUAL CLIP CUTTER ────────────────────────────────────────────────────
+
+  function fmtTime(sec) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    const ms = Math.floor((sec % 1) * 10);
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${ms}`;
+  }
+
+  function activateManualCutter(filePath, duration) {
+    manualMediaPath = filePath;
+    const section = $('randomManualSection');
+    const player = $('manualPreviewPlayer');
+    const scrubber = $('manualScrubber');
+    const timeDisplay = $('manualCurrentTime');
+
+    section.classList.remove('disabled-state');
+    player.src = '/api/serve-video?path=' + encodeURIComponent(filePath);
+    scrubber.max = duration;
+    scrubber.step = 0.5;
+    scrubber.value = 0;
+    timeDisplay.textContent = '00:00:00.0';
+
+    // Hide placeholder once video loads
+    player.addEventListener('loadeddata', () => {
+      const ph = $('manualCropPreviewPlaceholder');
+      if (ph) ph.style.display = 'none';
+      updateCropVisualization(0);
+    });
+
+    // Sync scrubber → player + update crop preview
+    scrubber.addEventListener('input', () => {
+      player.currentTime = parseFloat(scrubber.value);
+      timeDisplay.textContent = fmtTime(player.currentTime);
+    });
+    // Sync player → scrubber while playing + refresh preview frame
+    player.addEventListener('timeupdate', () => {
+      if (!scrubber.matches(':active')) {
+        scrubber.value = player.currentTime;
+        timeDisplay.textContent = fmtTime(player.currentTime);
+      }
+    });
+    // Redraw 9:16 preview whenever the video seeks to a new frame
+    player.addEventListener('seeked', () => {
+      const pan = (selectedQueueIndex === -1) ? manualPanValue : (manualQueue[selectedQueueIndex] ? manualQueue[selectedQueueIndex].pan : 0);
+      updateCropVisualization(pan);
+    });
+
+    // Alignment is now per-clip inside queue items, no global slider needed
+  }
+
+  // ─── INTERACTIVE ALIGNMENT STATION WIRING ────────────────────────────
+  const manualAlignLabel = $('manualAlignLabel');
+  const manualPanVal     = $('manualPanVal');
+  const manualPanSlider  = $('manualPanSlider');
+  const manualSnapL      = $('manualSnapL');
+  const manualSnapC      = $('manualSnapC');
+  const manualSnapR      = $('manualSnapR');
+
+  function updateAlignStationUI(pan) {
+    if (!manualPanSlider || !manualPanVal || !manualAlignLabel) return;
+    
+    manualPanSlider.value = pan;
+
+    // Label text & colors
+    if (Math.abs(pan) < 0.05) {
+      manualPanVal.textContent = 'Center';
+      manualPanVal.style.color = 'var(--accent-purple)';
+      manualPanVal.style.background = 'rgba(168,85,247,0.1)';
+    } else if (pan < 0) {
+      manualPanVal.textContent = `Left ${Math.abs(Math.round(pan * 100))}%`;
+      manualPanVal.style.color = 'var(--accent-cyan)';
+      manualPanVal.style.background = 'rgba(6,182,212,0.1)';
+    } else {
+      manualPanVal.textContent = `Right ${Math.round(pan * 100)}%`;
+      manualPanVal.style.color = 'var(--accent-cyan)';
+      manualPanVal.style.background = 'rgba(6,182,212,0.1)';
+    }
+
+    if (selectedQueueIndex === -1) {
+      manualAlignLabel.textContent = '↔ CROP ALIGNMENT (NEW CLIP)';
+      manualAlignLabel.style.color = 'var(--accent-cyan)';
+    } else {
+      manualAlignLabel.textContent = `↔ CROP ALIGNMENT (EDITING CLIP #${selectedQueueIndex + 1})`;
+      manualAlignLabel.style.color = 'var(--accent-purple)';
+    }
+
+    // Toggle active state on buttons
+    manualSnapL.classList.toggle('active-cyan', pan <= -0.9);
+    manualSnapC.classList.toggle('active-purple', Math.abs(pan) < 0.12);
+    manualSnapR.classList.toggle('active-cyan', pan >= 0.9);
+
+    // Update video preview canvas overlay and portrait preview
+    updateCropVisualization(pan);
+  }
+
+  function handleAlignmentChange(pan) {
+    if (selectedQueueIndex === -1) {
+      manualPanValue = pan;
+    } else {
+      if (manualQueue[selectedQueueIndex]) {
+        manualQueue[selectedQueueIndex].pan = pan;
+        // Dynamically update the specific queue item's badge without complete rerender
+        const itemEl = document.querySelectorAll('.manual-queue-item')[selectedQueueIndex];
+        if (itemEl) {
+          const badge = itemEl.querySelector('.mqi-align-badge');
+          if (badge) {
+            const isCenter = Math.abs(pan) < 0.05;
+            badge.className = `mqi-align-badge ${isCenter ? '' : (pan < 0 ? 'left-aligned' : 'right-aligned')}`;
+            badge.textContent = isCenter ? '⊙ Center' : (pan < 0 ? `◀ L ${Math.abs(Math.round(pan * 100))}%` : `R ${Math.round(pan * 100)}% ▶`);
+          }
+        }
+      }
+    }
+    updateAlignStationUI(pan);
+  }
+
+  if (manualPanSlider) {
+    manualPanSlider.addEventListener('input', () => {
+      handleAlignmentChange(parseFloat(manualPanSlider.value));
+    });
+    // Double click resets slider to center
+    manualPanSlider.addEventListener('dblclick', () => {
+      handleAlignmentChange(0);
+      toast('Crop aligned to Center');
+    });
+  }
+
+  if (manualSnapL) {
+    manualSnapL.addEventListener('click', () => {
+      handleAlignmentChange(-1);
+      toast('Aligned to Left edge');
+    });
+  }
+  if (manualSnapC) {
+    manualSnapC.addEventListener('click', () => {
+      handleAlignmentChange(0);
+      toast('Aligned to Center');
+    });
+  }
+  if (manualSnapR) {
+    manualSnapR.addEventListener('click', () => {
+      handleAlignmentChange(1);
+      toast('Aligned to Right edge');
+    });
+  }
+
+  // ADD TO QUEUE button
+  const manualBtnAddClip = $('manualBtnAddClip');
+  if (manualBtnAddClip) {
+    manualBtnAddClip.addEventListener('click', () => {
+      if (manualStartSec === null) {
+        toast('Set a START POINT first using the scrubber', 'error'); return;
+      }
+      if (!manualMediaPath) {
+        toast('Analyze a video first', 'error'); return;
+      }
+      // Add clip with current alignment settings
+      manualQueue.push({ start: manualStartSec, duration: manualDurSec, pan: manualPanValue });
+      
+      // Auto-select the newly added clip so the user can tweak it immediately
+      selectedQueueIndex = manualQueue.length - 1;
+      
+      renderManualQueue();
+      
+      // Update UI for the selected clip
+      updateAlignStationUI(manualQueue[selectedQueueIndex].pan);
+
+      toast(`Clip #${manualQueue.length} added & selected for alignment!`);
+    });
+  }
+
+  // CLEAR ALL button
+  const manualBtnClearQueue = $('manualBtnClearQueue');
+  if (manualBtnClearQueue) {
+    manualBtnClearQueue.addEventListener('click', () => {
+      manualQueue = [];
+      selectedQueueIndex = -1;
+      updateAlignStationUI(0);
+      renderManualQueue();
+    });
+  }
+
+  function renderManualQueue() {
+    const list = $('manualQueueList');
+    const wrapper = $('manualQueueWrapper');
+    const countEl = $('manualQueueCount');
+    const renderCountEl = $('manualRenderCount');
+    if (!list) return;
+
+    countEl.textContent = manualQueue.length;
+    renderCountEl.textContent = manualQueue.length;
+
+    if (manualQueue.length === 0) {
+      wrapper.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+    wrapper.classList.remove('hidden');
+    list.innerHTML = '';
+
+    manualQueue.forEach((clip, i) => {
+      const item = document.createElement('div');
+      // If selected, add selected class
+      const isSelected = (i === selectedQueueIndex);
+      item.className = `manual-queue-item ${isSelected ? 'selected' : ''}`;
+      
+      const panVal = clip.pan || 0;
+      const isCenter = Math.abs(panVal) < 0.05;
+      const alignText = isCenter ? '⊙ Center' : (panVal < 0 ? `◀ L ${Math.abs(Math.round(panVal * 100))}%` : `R ${Math.round(panVal * 100)}% ▶`);
+      const alignClass = isCenter ? '' : (panVal < 0 ? 'left-aligned' : 'right-aligned');
+
+      item.innerHTML = `
+        <span class="mqi-index">#${i + 1}</span>
+        <span class="mqi-info">${fmtTime(clip.start)}</span>
+        <span class="mqi-dur">${clip.duration}s</span>
+        <span class="mqi-align-badge ${alignClass}">${alignText}</span>
+        <button class="mqi-preview" title="Preview clip">▶ Play</button>
+        <button class="mqi-remove" title="Remove">✕</button>
+      `;
+
+      // Select row on click (except delete button)
+      item.addEventListener('click', (e) => {
+        if (e.target.classList.contains('mqi-remove')) return;
+        
+        selectedQueueIndex = i;
+        
+        // Remove selection style from other rows, add to this one
+        document.querySelectorAll('.manual-queue-item').forEach(row => row.classList.remove('selected'));
+        item.classList.add('selected');
+
+        // Sync player state & seek
+        const player = $('manualPreviewPlayer');
+        const scrubber = $('manualScrubber');
+        player.currentTime = clip.start;
+        scrubber.value = clip.start;
+        $('manualCurrentTime').textContent = fmtTime(clip.start);
+
+        // Update alignment station to this clip's pan
+        updateAlignStationUI(clip.pan);
+        
+        toast(`Editing alignment for Clip #${i+1}`);
+      });
+
+      // Play clip
+      item.querySelector('.mqi-preview').addEventListener('click', (e) => {
+        e.stopPropagation(); // prevent double triggering select
+        
+        // Mark as selected
+        selectedQueueIndex = i;
+        document.querySelectorAll('.manual-queue-item').forEach(row => row.classList.remove('selected'));
+        item.classList.add('selected');
+
+        // Update alignment controls
+        updateAlignStationUI(clip.pan);
+
+        const player  = $('manualPreviewPlayer');
+        const scrubber = $('manualScrubber');
+        player.currentTime = clip.start;
+        scrubber.value = clip.start;
+        $('manualCurrentTime').textContent = fmtTime(clip.start);
+        
+        player.play();
+        setTimeout(() => player.pause(), clip.duration * 1000);
+      });
+
+      // Remove item
+      item.querySelector('.mqi-remove').addEventListener('click', (e) => {
+        e.stopPropagation();
+        manualQueue.splice(i, 1);
+        
+        // Adjust selected index
+        if (selectedQueueIndex === i) {
+          selectedQueueIndex = -1; // reset to configure new clip
+          updateAlignStationUI(0);
+        } else if (selectedQueueIndex > i) {
+          selectedQueueIndex--;
+        }
+        
+        renderManualQueue();
+      });
+
+      list.appendChild(item);
+    });
+  }
+
 
   randomFilePath.addEventListener('keydown', e => {
     if (e.key === 'Enter') randomBtnProbe.click();
@@ -2302,165 +2595,7 @@ function initRandomGen() {
     }
   }
 
-  // SET START POINT button
-  const manualBtnSetStart = $('manualBtnSetStart');
-  if (manualBtnSetStart) {
-    manualBtnSetStart.addEventListener('click', () => {
-      const player = $('manualPreviewPlayer');
-      if (!player.src || player.src === window.location.href) {
-        toast('Analyze a video first', 'error'); return;
-      }
-      manualStartSec = player.currentTime;
-      $('manualStartDisplay').textContent = fmtTime(manualStartSec);
-      // Flash the badge
-      manualBtnSetStart.textContent = '✅ START SET';
-      setTimeout(() => { manualBtnSetStart.textContent = '📍 SET START'; }, 1200);
-      toast(`Start set: ${fmtTime(manualStartSec)}`);
-    });
-  }
 
-  // Manual duration buttons
-  const manualDurBtns = document.querySelectorAll('.manual-dur-btn');
-  manualDurBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      manualDurBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      manualDurSec = parseInt(btn.dataset.dur);
-    });
-  });
-
-  // ADD TO QUEUE button
-  const manualBtnAddClip = $('manualBtnAddClip');
-  if (manualBtnAddClip) {
-    manualBtnAddClip.addEventListener('click', () => {
-      if (manualStartSec === null) {
-        toast('Set a START POINT first using the scrubber', 'error'); return;
-      }
-      if (!manualMediaPath) {
-        toast('Analyze a video first', 'error'); return;
-      }
-      manualQueue.push({ start: manualStartSec, duration: manualDurSec, pan: manualPanValue });
-      renderManualQueue();
-      toast(`Clip added: ${fmtTime(manualStartSec)} + ${manualDurSec}s${Math.abs(manualPanValue) > 0.02 ? (manualPanValue < 0 ? ' ◀Left' : ' Right▶') : ''}`);
-    });
-  }
-
-  // CLEAR ALL button
-  const manualBtnClearQueue = $('manualBtnClearQueue');
-  if (manualBtnClearQueue) {
-    manualBtnClearQueue.addEventListener('click', () => {
-      manualQueue = [];
-      renderManualQueue();
-    });
-  }
-
-  function renderManualQueue() {
-    const list = $('manualQueueList');
-    const wrapper = $('manualQueueWrapper');
-    const countEl = $('manualQueueCount');
-    const renderCountEl = $('manualRenderCount');
-    if (!list) return;
-
-    countEl.textContent = manualQueue.length;
-    renderCountEl.textContent = manualQueue.length;
-
-    if (manualQueue.length === 0) {
-      wrapper.classList.add('hidden');
-      list.innerHTML = '';
-      return;
-    }
-    wrapper.classList.remove('hidden');
-    list.innerHTML = '';
-
-    manualQueue.forEach((clip, i) => {
-      const item = document.createElement('div');
-      item.className = 'manual-queue-item';
-
-      // Determine snap state for initial render
-      const isLeft   = clip.pan <= -0.9;
-      const isCenter = Math.abs(clip.pan) < 0.12;
-      const isRight  = clip.pan >= 0.9;
-
-      item.innerHTML = `
-        <span class="mqi-index">#${i + 1}</span>
-        <span class="mqi-info">${fmtTime(clip.start)}</span>
-        <span class="mqi-dur">${clip.duration}s</span>
-        <div class="mqi-align" title="Frame alignment: drag or snap L/C/R">
-          <button class="mqi-align-snap mqi-snap-l ${isLeft ? 'snap-active' : ''}" title="Snap Left">◀</button>
-          <input type="range" class="mqi-pan-range" min="-1" max="1" step="0.05" value="${(clip.pan || 0).toFixed(2)}" title="Fine-tune alignment (dbl-click resets)">
-          <button class="mqi-align-snap mqi-snap-c ${isCenter ? 'snap-center-active' : ''}" title="Snap Center">⊙</button>
-          <button class="mqi-align-snap mqi-snap-r ${isRight ? 'snap-active' : ''}" title="Snap Right">▶</button>
-        </div>
-        <button class="mqi-preview" title="Preview clip">▶</button>
-        <button class="mqi-remove" title="Remove">✕</button>
-      `;
-
-      const panRange  = item.querySelector('.mqi-pan-range');
-      const snapL     = item.querySelector('.mqi-snap-l');
-      const snapC     = item.querySelector('.mqi-snap-c');
-      const snapR     = item.querySelector('.mqi-snap-r');
-
-      function updateSnapState(pan) {
-        snapL.classList.toggle('snap-active',        pan <= -0.9);
-        snapC.classList.toggle('snap-center-active', Math.abs(pan) < 0.12);
-        snapR.classList.toggle('snap-active',        pan >= 0.9);
-        item.classList.toggle('align-active', Math.abs(pan) > 0.05);
-      }
-
-      // Fine-tune slider → live crop preview
-      panRange.addEventListener('input', () => {
-        manualQueue[i].pan = parseFloat(panRange.value);
-        updateSnapState(manualQueue[i].pan);
-        updateCropVisualization(manualQueue[i].pan);
-      });
-      // Double-click resets to center + refreshes preview
-      panRange.addEventListener('dblclick', () => {
-        manualQueue[i].pan = 0;
-        panRange.value = 0;
-        updateSnapState(0);
-        updateCropVisualization(0);
-        toast('Alignment reset to center');
-      });
-
-      // Snap buttons → instant crop preview
-      snapL.addEventListener('click', () => {
-        manualQueue[i].pan = -1; panRange.value = -1;
-        updateSnapState(-1); updateCropVisualization(-1);
-        toast(`#${i+1} → Left`);
-      });
-      snapC.addEventListener('click', () => {
-        manualQueue[i].pan = 0; panRange.value = 0;
-        updateSnapState(0); updateCropVisualization(0);
-        toast(`#${i+1} → Center`);
-      });
-      snapR.addEventListener('click', () => {
-        manualQueue[i].pan = 1; panRange.value = 1;
-        updateSnapState(1); updateCropVisualization(1);
-        toast(`#${i+1} → Right`);
-      });
-
-      // Preview: seek player to clip start + show this clip's crop alignment
-      item.querySelector('.mqi-preview').addEventListener('click', () => {
-        const player  = $('manualPreviewPlayer');
-        const scrubber = $('manualScrubber');
-        player.currentTime = clip.start;
-        scrubber.value = clip.start;
-        $('manualCurrentTime').textContent = fmtTime(clip.start);
-        manualPanValue = clip.pan;         // update global so seeked event uses this clip's pan
-        updateCropVisualization(clip.pan); // show this clip's crop window immediately
-        player.play();
-        setTimeout(() => player.pause(), clip.duration * 1000);
-      });
-
-      // Remove
-      item.querySelector('.mqi-remove').addEventListener('click', () => {
-        manualQueue.splice(i, 1);
-        renderManualQueue();
-      });
-
-      list.appendChild(item);
-    });
-  }
 
   // RENDER MANUAL CLIPS button
   const manualBtnRender = $('manualBtnRender');
