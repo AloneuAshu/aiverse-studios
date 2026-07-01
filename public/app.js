@@ -2076,6 +2076,7 @@ function initRandomGen() {
   let manualStartSec = null;
   let manualDurSec = 5;
   let manualMediaPath = null;
+  let manualPanValue = 0;  // -1 = full left, 0 = center, 1 = full right
 
   // Duration button selection
   const durBtns = document.querySelectorAll('.random-dur-btn');
@@ -2185,6 +2186,48 @@ function initRandomGen() {
         timeDisplay.textContent = fmtTime(player.currentTime);
       }
     });
+
+    // Pan slider: live preview using CSS transform (same principle as Batch Generator)
+    const panSlider = $('manualPanSlider');
+    const panVal = $('manualPanVal');
+    if (panSlider) {
+      // Reset to center when new file loaded
+      panSlider.value = 0;
+      manualPanValue = 0;
+      if (panVal) panVal.textContent = 'Center';
+      player.style.transform = '';
+
+      panSlider.addEventListener('input', () => {
+        manualPanValue = parseFloat(panSlider.value);
+        // Update label
+        if (Math.abs(manualPanValue) < 0.02) {
+          panVal.textContent = 'Center';
+        } else if (manualPanValue < 0) {
+          panVal.textContent = `Left ${Math.abs(Math.round(manualPanValue * 100))}%`;
+        } else {
+          panVal.textContent = `Right ${Math.round(manualPanValue * 100)}%`;
+        }
+        // Apply visual pan to mini player
+        applyManualPreviewPan(manualPanValue);
+      });
+    }
+  }
+
+  function applyManualPreviewPan(pan) {
+    if (!randomMediaInfo) return;
+    const player = $('manualPreviewPlayer');
+    const containerW = player.offsetWidth || 280;
+    const containerH = player.offsetHeight || 160;
+    const srcAspect = randomMediaInfo.width / randomMediaInfo.height;
+    // The player shows the video fitted to container height
+    const videoDisplayW = containerH * srcAspect;
+    const maxShift = Math.max(0, (videoDisplayW - containerW) / 2);
+    const tx = -maxShift * (1 + pan); // pan=-1 → tx=0 (left edge), pan=0 → tx=-maxShift (center), pan=1 → tx=-2*maxShift (right edge)
+    player.style.transform = `translateX(${tx}px)`;
+    player.style.objectFit = 'none';
+    player.style.objectPosition = 'left center';
+    player.style.width = 'auto';
+    player.style.maxWidth = 'none';
   }
 
   // SET START POINT button
@@ -2224,9 +2267,9 @@ function initRandomGen() {
       if (!manualMediaPath) {
         toast('Analyze a video first', 'error'); return;
       }
-      manualQueue.push({ start: manualStartSec, duration: manualDurSec, pan: 0 });
+      manualQueue.push({ start: manualStartSec, duration: manualDurSec, pan: manualPanValue });
       renderManualQueue();
-      toast(`Clip added: ${fmtTime(manualStartSec)} + ${manualDurSec}s`);
+      toast(`Clip added: ${fmtTime(manualStartSec)} + ${manualDurSec}s${Math.abs(manualPanValue) > 0.02 ? (manualPanValue < 0 ? ' ◀Left' : ' Right▶') : ''}`);
     });
   }
 
@@ -2259,10 +2302,12 @@ function initRandomGen() {
     manualQueue.forEach((clip, i) => {
       const item = document.createElement('div');
       item.className = 'manual-queue-item';
+      const panLabel = Math.abs(clip.pan || 0) < 0.02 ? '⊙' : (clip.pan < 0 ? `◀${Math.abs(Math.round(clip.pan * 100))}%` : `${Math.round(clip.pan * 100)}%▶`);
       item.innerHTML = `
         <span class="mqi-index">#${i + 1}</span>
         <span class="mqi-info">${fmtTime(clip.start)}</span>
         <span class="mqi-dur">${clip.duration}s</span>
+        <span class="mqi-dur" style="background:rgba(168,85,247,0.12);color:var(--accent-purple);border-color:rgba(168,85,247,0.3);">${panLabel}</span>
         <button class="mqi-preview" title="Preview">▶</button>
         <button class="mqi-remove" title="Remove">✕</button>
       `;
@@ -2300,28 +2345,26 @@ function initRandomGen() {
       const progFill = $('manualProgressFill');
       const statusText = $('manualStatusText');
 
-      // Smart 9:16 portrait crop from source dimensions
-      // If landscape: center-crop to portrait column (height stays, width = H * 9/16)
-      // If portrait already: use full frame
+      // Base crop dimensions from source (computed once, pan offsets cropX per clip)
       const srcW = randomMediaInfo.width;
       const srcH = randomMediaInfo.height;
-      let cropW, cropH, cropX, cropY;
+      let baseCropW, baseCropH, baseCropY, maxCropX;
       if (srcW > srcH) {
-        // Landscape source → take a portrait center-slice
-        cropH = srcH;
-        cropW = Math.round((srcH * 9) / 16);
-        cropX = Math.round((srcW - cropW) / 2);
-        cropY = 0;
+        // Landscape: portrait center-slice
+        baseCropH = srcH;
+        baseCropW = Math.round((srcH * 9) / 16);
+        baseCropY = 0;
+        maxCropX = srcW - baseCropW;  // max left-offset
       } else {
-        // Already portrait or square → full frame
-        cropW = srcW;
-        cropH = srcH;
-        cropX = 0;
-        cropY = 0;
+        // Portrait/square: full frame
+        baseCropW = srcW;
+        baseCropH = srcH;
+        baseCropY = 0;
+        maxCropX = 0;
       }
       // Ensure even numbers (FFmpeg requirement)
-      cropW = Math.round(cropW / 2) * 2;
-      cropH = Math.round(cropH / 2) * 2;
+      baseCropW = Math.round(baseCropW / 2) * 2;
+      baseCropH = Math.round(baseCropH / 2) * 2;
 
       manualBtnRender.disabled = true;
       progSection.classList.remove('hidden');
@@ -2334,6 +2377,20 @@ function initRandomGen() {
         statusText.textContent = `Rendering clip ${i + 1} of ${total}…`;
         progFill.style.width = `${Math.round((i / total) * 100)}%`;
 
+        // Compute cropX from this clip's saved pan value
+        // pan=−1 → cropX=0 (full left), pan=0 → cropX=center, pan=+1 → cropX=maxCropX (full right)
+        const clipPan = clip.pan || 0;
+        const centerX = Math.round((srcW - baseCropW) / 2);
+        let clipCropX;
+        if (clipPan < 0) {
+          // left of center
+          clipCropX = Math.round(centerX * (1 + clipPan)); // pan=-1 → 0
+        } else {
+          // right of center
+          clipCropX = Math.round(centerX + clipPan * (maxCropX - centerX)); // pan=1 → maxCropX
+        }
+        clipCropX = Math.max(0, Math.min(maxCropX, clipCropX));
+
         try {
           const r = await fetch('/api/crop-render', {
             method: 'POST',
@@ -2342,10 +2399,10 @@ function initRandomGen() {
               filePath: manualMediaPath,
               startSec: clip.start,
               duration: clip.duration,
-              cropX,
-              cropY,
-              cropW,
-              cropH,
+              cropX: clipCropX,
+              cropY: baseCropY,
+              cropW: baseCropW,
+              cropH: baseCropH,
               fitMode,
               format
             })
