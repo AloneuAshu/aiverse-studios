@@ -2186,48 +2186,7 @@ function initRandomGen() {
         timeDisplay.textContent = fmtTime(player.currentTime);
       }
     });
-
-    // Pan slider: live preview using CSS transform (same principle as Batch Generator)
-    const panSlider = $('manualPanSlider');
-    const panVal = $('manualPanVal');
-    if (panSlider) {
-      // Reset to center when new file loaded
-      panSlider.value = 0;
-      manualPanValue = 0;
-      if (panVal) panVal.textContent = 'Center';
-      player.style.transform = '';
-
-      panSlider.addEventListener('input', () => {
-        manualPanValue = parseFloat(panSlider.value);
-        // Update label
-        if (Math.abs(manualPanValue) < 0.02) {
-          panVal.textContent = 'Center';
-        } else if (manualPanValue < 0) {
-          panVal.textContent = `Left ${Math.abs(Math.round(manualPanValue * 100))}%`;
-        } else {
-          panVal.textContent = `Right ${Math.round(manualPanValue * 100)}%`;
-        }
-        // Apply visual pan to mini player
-        applyManualPreviewPan(manualPanValue);
-      });
-    }
-  }
-
-  function applyManualPreviewPan(pan) {
-    if (!randomMediaInfo) return;
-    const player = $('manualPreviewPlayer');
-    const containerW = player.offsetWidth || 280;
-    const containerH = player.offsetHeight || 160;
-    const srcAspect = randomMediaInfo.width / randomMediaInfo.height;
-    // The player shows the video fitted to container height
-    const videoDisplayW = containerH * srcAspect;
-    const maxShift = Math.max(0, (videoDisplayW - containerW) / 2);
-    const tx = -maxShift * (1 + pan); // pan=-1 → tx=0 (left edge), pan=0 → tx=-maxShift (center), pan=1 → tx=-2*maxShift (right edge)
-    player.style.transform = `translateX(${tx}px)`;
-    player.style.objectFit = 'none';
-    player.style.objectPosition = 'left center';
-    player.style.width = 'auto';
-    player.style.maxWidth = 'none';
+    // Alignment is now per-clip inside queue items, no global slider needed
   }
 
   // SET START POINT button
@@ -2299,34 +2258,92 @@ function initRandomGen() {
     }
     wrapper.classList.remove('hidden');
     list.innerHTML = '';
+
     manualQueue.forEach((clip, i) => {
       const item = document.createElement('div');
       item.className = 'manual-queue-item';
-      const panLabel = Math.abs(clip.pan || 0) < 0.02 ? '⊙' : (clip.pan < 0 ? `◀${Math.abs(Math.round(clip.pan * 100))}%` : `${Math.round(clip.pan * 100)}%▶`);
+
+      // Determine snap state for initial render
+      const isLeft   = clip.pan <= -0.9;
+      const isCenter = Math.abs(clip.pan) < 0.12;
+      const isRight  = clip.pan >= 0.9;
+
       item.innerHTML = `
         <span class="mqi-index">#${i + 1}</span>
         <span class="mqi-info">${fmtTime(clip.start)}</span>
         <span class="mqi-dur">${clip.duration}s</span>
-        <span class="mqi-dur" style="background:rgba(168,85,247,0.12);color:var(--accent-purple);border-color:rgba(168,85,247,0.3);">${panLabel}</span>
-        <button class="mqi-preview" title="Preview">▶</button>
+        <div class="mqi-align" title="Frame alignment: drag or snap L/C/R">
+          <button class="mqi-align-snap mqi-snap-l ${isLeft ? 'snap-active' : ''}" title="Snap Left">◀</button>
+          <input type="range" class="mqi-pan-range" min="-1" max="1" step="0.05" value="${(clip.pan || 0).toFixed(2)}" title="Fine-tune alignment (dbl-click resets)">
+          <button class="mqi-align-snap mqi-snap-c ${isCenter ? 'snap-center-active' : ''}" title="Snap Center">⊙</button>
+          <button class="mqi-align-snap mqi-snap-r ${isRight ? 'snap-active' : ''}" title="Snap Right">▶</button>
+        </div>
+        <button class="mqi-preview" title="Preview clip">▶</button>
         <button class="mqi-remove" title="Remove">✕</button>
       `;
-      // Preview: seek the player to this clip's start
+
+      const panRange  = item.querySelector('.mqi-pan-range');
+      const snapL     = item.querySelector('.mqi-snap-l');
+      const snapC     = item.querySelector('.mqi-snap-c');
+      const snapR     = item.querySelector('.mqi-snap-r');
+
+      function updateSnapState(pan) {
+        snapL.classList.toggle('snap-active',        pan <= -0.9);
+        snapC.classList.toggle('snap-center-active', Math.abs(pan) < 0.12);
+        snapR.classList.toggle('snap-active',        pan >= 0.9);
+        item.classList.toggle('align-active', Math.abs(pan) > 0.05);
+      }
+
+      // Fine-tune slider
+      panRange.addEventListener('input', () => {
+        manualQueue[i].pan = parseFloat(panRange.value);
+        updateSnapState(manualQueue[i].pan);
+      });
+      // Double-click resets to center
+      panRange.addEventListener('dblclick', () => {
+        manualQueue[i].pan = 0;
+        panRange.value = 0;
+        updateSnapState(0);
+        toast('Alignment reset to center');
+      });
+
+      // Snap buttons
+      snapL.addEventListener('click', () => {
+        manualQueue[i].pan = -1;
+        panRange.value = -1;
+        updateSnapState(-1);
+        toast(`#${i+1} snapped to Left`);
+      });
+      snapC.addEventListener('click', () => {
+        manualQueue[i].pan = 0;
+        panRange.value = 0;
+        updateSnapState(0);
+        toast(`#${i+1} centered`);
+      });
+      snapR.addEventListener('click', () => {
+        manualQueue[i].pan = 1;
+        panRange.value = 1;
+        updateSnapState(1);
+        toast(`#${i+1} snapped to Right`);
+      });
+
+      // Preview: seek player to clip start and play
       item.querySelector('.mqi-preview').addEventListener('click', () => {
-        const player = $('manualPreviewPlayer');
+        const player  = $('manualPreviewPlayer');
         const scrubber = $('manualScrubber');
         player.currentTime = clip.start;
         scrubber.value = clip.start;
         $('manualCurrentTime').textContent = fmtTime(clip.start);
         player.play();
-        // Pause after duration
         setTimeout(() => player.pause(), clip.duration * 1000);
       });
+
       // Remove
       item.querySelector('.mqi-remove').addEventListener('click', () => {
         manualQueue.splice(i, 1);
         renderManualQueue();
       });
+
       list.appendChild(item);
     });
   }
