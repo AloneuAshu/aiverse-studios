@@ -2298,6 +2298,33 @@ function initRandomGen() {
     });
   }
 
+  // SET START POINT button
+  const manualBtnSetStart = $('manualBtnSetStart');
+  if (manualBtnSetStart) {
+    manualBtnSetStart.addEventListener('click', () => {
+      const player = $('manualPreviewPlayer');
+      if (!player.src || player.src === window.location.href) {
+        toast('Analyze a video first', 'error'); return;
+      }
+      manualStartSec = player.currentTime;
+      $('manualStartDisplay').textContent = fmtTime(manualStartSec);
+      // Flash the badge
+      manualBtnSetStart.textContent = '✅ START SET';
+      setTimeout(() => { manualBtnSetStart.textContent = '📍 SET START'; }, 1200);
+      toast(`Start set: ${fmtTime(manualStartSec)}`);
+    });
+  }
+
+  // Manual duration buttons
+  const manualDurBtns = document.querySelectorAll('.manual-dur-btn');
+  manualDurBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      manualDurBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      manualDurSec = parseInt(btn.dataset.dur);
+    });
+  });
+
   // ADD TO QUEUE button
   const manualBtnAddClip = $('manualBtnAddClip');
   if (manualBtnAddClip) {
