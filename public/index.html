@@ -462,10 +462,26 @@
               <h2>MANUAL CLIP CUTTER</h2>
             </div>
 
-            <!-- Mini Video Preview Player -->
-            <div style="position: relative; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.12); margin-bottom: 0.7rem; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-              <video id="manualPreviewPlayer" style="width: 100%; height: 160px; object-fit: contain; display: block;" preload="metadata"></video>
-              <div style="position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%);"></div>
+            <!-- Video Preview + 9:16 Crop Visualizer -->
+            <div style="display: flex; gap: 0.6rem; margin-bottom: 0.6rem; align-items: flex-start;">
+
+              <!-- Left: Landscape player with crop-window overlay -->
+              <div style="flex: 1; position: relative; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
+                <video id="manualPreviewPlayer" style="width: 100%; height: 130px; object-fit: contain; display: block;" preload="metadata"></video>
+                <!-- Crop window overlay: drawn by JS, shows which 9:16 slice is selected -->
+                <canvas id="manualCropOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+                <span style="position: absolute; bottom: 4px; left: 6px; font-size: 0.48rem; color: rgba(255,255,255,0.3); font-family: monospace; letter-spacing: 0.05em; pointer-events: none;">FULL FRAME</span>
+              </div>
+
+              <!-- Right: Live 9:16 portrait crop preview -->
+              <div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <span style="font-size: 0.5rem; color: var(--accent-cyan); letter-spacing: 0.1em; font-weight: 700; text-transform: uppercase;">9:16</span>
+                <div style="position: relative; border-radius: 6px; overflow: hidden; border: 1.5px solid rgba(6,182,212,0.5); box-shadow: 0 0 10px rgba(6,182,212,0.2);">
+                  <canvas id="manualCropPreview" width="73" height="130" style="display: block; background: #0d0d0d;"></canvas>
+                  <div id="manualCropPreviewPlaceholder" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); font-size: 0.5rem; color: rgba(255,255,255,0.3); text-align: center; line-height: 1.4; padding: 4px;">Analyze<br>video<br>first</div>
+                </div>
+              </div>
+
             </div>
 
             <!-- Scrubber + Time display -->

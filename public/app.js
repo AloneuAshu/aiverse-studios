@@ -2167,26 +2167,139 @@ function initRandomGen() {
     const timeDisplay = $('manualCurrentTime');
 
     section.classList.remove('disabled-state');
-    // Load video into mini player
     player.src = '/api/serve-video?path=' + encodeURIComponent(filePath);
     scrubber.max = duration;
     scrubber.step = 0.5;
     scrubber.value = 0;
     timeDisplay.textContent = '00:00:00.0';
 
-    // Sync scrubber → player
+    // Hide placeholder once video loads
+    player.addEventListener('loadeddata', () => {
+      const ph = $('manualCropPreviewPlaceholder');
+      if (ph) ph.style.display = 'none';
+      updateCropVisualization(0);
+    });
+
+    // Sync scrubber → player + update crop preview
     scrubber.addEventListener('input', () => {
       player.currentTime = parseFloat(scrubber.value);
       timeDisplay.textContent = fmtTime(player.currentTime);
     });
-    // Sync player → scrubber while playing
+    // Sync player → scrubber while playing + refresh preview frame
     player.addEventListener('timeupdate', () => {
       if (!scrubber.matches(':active')) {
         scrubber.value = player.currentTime;
         timeDisplay.textContent = fmtTime(player.currentTime);
       }
     });
+    // Redraw 9:16 preview whenever the video seeks to a new frame
+    player.addEventListener('seeked', () => updateCropVisualization(manualPanValue));
+
     // Alignment is now per-clip inside queue items, no global slider needed
+  }
+
+  // ─── CROP VISUALIZATION ENGINE ─────────────────────────────────────────────
+  // Draws: (1) crop-window overlay on the landscape player
+  //        (2) live 9:16 portrait canvas of the exact cropped output
+
+  function updateCropVisualization(pan) {
+    if (!randomMediaInfo) return;
+
+    const video      = $('manualPreviewPlayer');
+    const overlayC   = $('manualCropOverlay');
+    const previewC   = $('manualCropPreview');
+    if (!overlayC || !previewC) return;
+
+    const srcW = randomMediaInfo.width;
+    const srcH = randomMediaInfo.height;
+
+    // Compute 9:16 crop dimensions in source space
+    let cropW, cropH, cropY;
+    if (srcW > srcH) {
+      cropH = srcH;
+      cropW = Math.round((srcH * 9) / 16);
+      cropY = 0;
+    } else {
+      cropW = srcW; cropH = srcH; cropY = 0;
+    }
+    cropW = Math.round(cropW / 2) * 2;
+    cropH = Math.round(cropH / 2) * 2;
+
+    const maxCropX = Math.max(0, srcW - cropW);
+    const centerX  = Math.round(maxCropX / 2);
+    let cropX;
+    if (pan < 0) {
+      cropX = Math.round(centerX * (1 + pan));
+    } else {
+      cropX = Math.round(centerX + pan * (maxCropX - centerX));
+    }
+    cropX = Math.max(0, Math.min(maxCropX, cropX));
+
+    // ── 1. Landscape overlay: dark masks + cyan crop-window border ──────────
+    const cW = overlayC.offsetWidth;
+    const cH = overlayC.offsetHeight;
+    overlayC.width  = cW;
+    overlayC.height = cH;
+    const ctx = overlayC.getContext('2d');
+    ctx.clearRect(0, 0, cW, cH);
+
+    // Where is the video rendered inside the container (object-fit: contain)?
+    const aspect = srcW / srcH;
+    let vW = cW, vH = cW / aspect;
+    if (vH > cH) { vH = cH; vW = cH * aspect; }
+    const vX = (cW - vW) / 2;
+    const vY = (cH - vH) / 2;
+
+    // Crop window in display coords
+    const dLeft = vX + (cropX / srcW) * vW;
+    const dCropW = (cropW / srcW) * vW;
+
+    // Dark overlay on the non-crop areas
+    ctx.fillStyle = 'rgba(0,0,0,0.62)';
+    ctx.fillRect(vX, vY, dLeft - vX, vH);                       // left strip
+    ctx.fillRect(dLeft + dCropW, vY, (vX + vW) - (dLeft + dCropW), vH); // right strip
+
+    // Cyan crop-window border
+    ctx.strokeStyle = 'rgba(6,182,212,0.95)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(dLeft + 1, vY + 1, dCropW - 2, vH - 2);
+
+    // Corner accent marks (like a viewfinder)
+    const mark = 8;
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#fff';
+    [[dLeft+1, vY+1], [dLeft+dCropW-1, vY+1], [dLeft+1, vY+vH-1], [dLeft+dCropW-1, vY+vH-1]].forEach(([x,y]) => {
+      const dx = x < dLeft + dCropW/2 ? 1 : -1;
+      const dy = y < vY + vH/2 ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(x + dx*mark, y); ctx.lineTo(x, y); ctx.lineTo(x, y + dy*mark);
+      ctx.stroke();
+    });
+
+    // "9:16" label centered in the crop window
+    ctx.fillStyle = 'rgba(6,182,212,0.85)';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('9:16', dLeft + dCropW/2, vY + vH - 6);
+
+    // ── 2. Portrait preview canvas: actual cropped frame ────────────────────
+    if (video.readyState >= 2) {
+      const pCtx = previewC.getContext('2d');
+      pCtx.clearRect(0, 0, previewC.width, previewC.height);
+      try {
+        pCtx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, previewC.width, previewC.height);
+      } catch(e) { /* video not ready yet */ }
+
+      // Subtle vignette
+      const grad = pCtx.createRadialGradient(
+        previewC.width/2, previewC.height/2, previewC.height*0.3,
+        previewC.width/2, previewC.height/2, previewC.height*0.8
+      );
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+      pCtx.fillStyle = grad;
+      pCtx.fillRect(0, 0, previewC.width, previewC.height);
+    }
   }
 
   // SET START POINT button
@@ -2294,46 +2407,47 @@ function initRandomGen() {
         item.classList.toggle('align-active', Math.abs(pan) > 0.05);
       }
 
-      // Fine-tune slider
+      // Fine-tune slider → live crop preview
       panRange.addEventListener('input', () => {
         manualQueue[i].pan = parseFloat(panRange.value);
         updateSnapState(manualQueue[i].pan);
+        updateCropVisualization(manualQueue[i].pan);
       });
-      // Double-click resets to center
+      // Double-click resets to center + refreshes preview
       panRange.addEventListener('dblclick', () => {
         manualQueue[i].pan = 0;
         panRange.value = 0;
         updateSnapState(0);
+        updateCropVisualization(0);
         toast('Alignment reset to center');
       });
 
-      // Snap buttons
+      // Snap buttons → instant crop preview
       snapL.addEventListener('click', () => {
-        manualQueue[i].pan = -1;
-        panRange.value = -1;
-        updateSnapState(-1);
-        toast(`#${i+1} snapped to Left`);
+        manualQueue[i].pan = -1; panRange.value = -1;
+        updateSnapState(-1); updateCropVisualization(-1);
+        toast(`#${i+1} → Left`);
       });
       snapC.addEventListener('click', () => {
-        manualQueue[i].pan = 0;
-        panRange.value = 0;
-        updateSnapState(0);
-        toast(`#${i+1} centered`);
+        manualQueue[i].pan = 0; panRange.value = 0;
+        updateSnapState(0); updateCropVisualization(0);
+        toast(`#${i+1} → Center`);
       });
       snapR.addEventListener('click', () => {
-        manualQueue[i].pan = 1;
-        panRange.value = 1;
-        updateSnapState(1);
-        toast(`#${i+1} snapped to Right`);
+        manualQueue[i].pan = 1; panRange.value = 1;
+        updateSnapState(1); updateCropVisualization(1);
+        toast(`#${i+1} → Right`);
       });
 
-      // Preview: seek player to clip start and play
+      // Preview: seek player to clip start + show this clip's crop alignment
       item.querySelector('.mqi-preview').addEventListener('click', () => {
         const player  = $('manualPreviewPlayer');
         const scrubber = $('manualScrubber');
         player.currentTime = clip.start;
         scrubber.value = clip.start;
         $('manualCurrentTime').textContent = fmtTime(clip.start);
+        manualPanValue = clip.pan;         // update global so seeked event uses this clip's pan
+        updateCropVisualization(clip.pan); // show this clip's crop window immediately
         player.play();
         setTimeout(() => player.pause(), clip.duration * 1000);
       });
