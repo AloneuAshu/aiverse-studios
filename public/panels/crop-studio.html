@@ -1,0 +1,241 @@
+<div class="tab-panel hidden" id="panelCropStudio">
+  <div class="crop-studio-layout">
+
+    <!-- LEFT: Controls -->
+    <div class="crop-controls-col glass-card">
+
+      <div class="panel-header">
+        <span class="step-num">01</span>
+        <h2>SOURCE VIDEO</h2>
+      </div>
+
+      <div class="input-group">
+        <label class="neon-label">Video File Path</label>
+        <div class="path-input-wrapper">
+          <input type="text" id="cropFilePath" placeholder="Click BROWSE or paste path…" autocomplete="off">
+          <button id="cropBtnBrowse" class="glow-btn browse-btn">BROWSE</button>
+        </div>
+      </div>
+
+      <button id="cropBtnLoad" class="glow-btn" style="width:100%;margin-top:0.4rem;">▶ LOAD VIDEO</button>
+
+      <div id="cropVideoMeta" class="probe-result-card hidden" style="margin-top:0.8rem;">
+        <div class="meta-grid">
+          <div class="meta-item"><span class="label">FILE</span><span id="cropMetaFile" class="value">-</span></div>
+          <div class="meta-item"><span class="label">DURATION</span><span id="cropMetaDur" class="value">-</span></div>
+          <div class="meta-item"><span class="label">SIZE</span><span id="cropMetaRes" class="value">-</span></div>
+        </div>
+      </div>
+
+      <div class="panel-header" style="margin-top:1.2rem;">
+        <span class="step-num">02</span>
+        <h2>FRAME CROP CONTROLS</h2>
+      </div>
+
+      <div class="crop-sliders">
+        <div class="input-group">
+          <div class="label-row">
+            <label class="neon-label">⟺ HORIZONTAL PAN</label>
+            <span class="neon-label" id="cropXVal" style="color:var(--accent-cyan);font-size:0.65rem;">Center</span>
+          </div>
+          <input type="range" id="cropXSlider" min="-1" max="1" step="0.01" value="0" class="crop-slider">
+        </div>
+        <div class="input-group">
+          <div class="label-row">
+            <label class="neon-label">⟺ VERTICAL PAN</label>
+            <span class="neon-label" id="cropYVal" style="color:var(--accent-cyan);font-size:0.65rem;">Center</span>
+          </div>
+          <input type="range" id="cropYSlider" min="-1" max="1" step="0.01" value="0" class="crop-slider">
+        </div>
+        <div class="input-group">
+          <div class="label-row">
+            <label class="neon-label">🔍 ZOOM</label>
+            <span class="neon-label" id="cropZoomVal" style="color:var(--accent-cyan);font-size:0.65rem;">1.0×</span>
+          </div>
+          <input type="range" id="cropZoomSlider" min="1" max="3" step="0.05" value="1" class="crop-slider">
+        </div>
+      </div>
+
+      <div style="margin-top:0.8rem; margin-bottom: 1rem;">
+        <label class="neon-label" style="margin-bottom:0.4rem;display:block;">OUTPUT FORMAT</label>
+        <div class="fade-btn-row">
+          <button class="fade-btn active" data-cropfit="blur" id="cropFitBlur"><span class="fade-icon">✨</span><span class="fade-label">Blur Pad</span></button>
+          <button class="fade-btn" data-cropfit="crop" id="cropFitCrop"><span class="fade-icon">✂️</span><span class="fade-label">Smart Crop</span></button>
+        </div>
+      </div>
+
+    </div><!-- /crop-controls-col -->
+
+    <!-- CENTER: Canvas Editor -->
+    <div class="crop-canvas-col">
+
+      <div class="crop-canvas-header">
+        <span class="neon-label">🎬 16:9 FRAME EDITOR — drag the cyan box to reframe</span>
+        <span id="cropCanvasInfo" class="cyber-dim" style="font-size:0.65rem;">Load a video to begin</span>
+      </div>
+
+      <div class="crop-canvas-wrapper" id="cropCanvasWrapper">
+        <canvas id="cropCanvas" class="crop-canvas"></canvas>
+        <div class="crop-canvas-empty" id="cropCanvasEmpty">
+          <div class="empty-icon">📹</div>
+          <p>Load a video to start editing</p>
+        </div>
+      </div>
+
+      <!-- ═══ PROFESSIONAL FILMSTRIP TIMELINE ═══ -->
+      <div class="filmstrip-section" id="filmstripSection" style="display:none;">
+
+        <!-- Time Ruler -->
+        <div class="fs-ruler" id="fsRuler"></div>
+
+        <!-- Filmstrip + Clip Selection Overlay -->
+        <div class="fs-track-outer" id="fsTrackOuter">
+
+          <!-- Actual frame thumbnail strip -->
+          <div class="fs-frames" id="fsFrames">
+            <!-- frames injected by JS -->
+            <div class="fs-loading" id="fsLoading">
+              <div class="fs-loading-bar"></div>
+              <span>Generating filmstrip…</span>
+            </div>
+          </div>
+
+          <!-- Hover Preview Tooltip -->
+          <div class="fs-hover-preview" id="fsHoverPreview">
+            <img id="fsHoverPreviewImg" src="" alt="">
+            <div class="fs-hover-time" id="fsHoverTime">00:00.00</div>
+          </div>
+
+          <!-- Dark overlay: before selection -->
+          <div class="fs-mask fs-mask-left" id="fsMaskLeft"></div>
+          <!-- Dark overlay: after selection -->
+          <div class="fs-mask fs-mask-right" id="fsMaskRight"></div>
+
+          <!-- Clip selection box (the highlighted region) -->
+          <div class="fs-selection" id="fsSelection">
+            <!-- Left bracket handle -->
+            <div class="fs-handle fs-handle-left" id="fsHandleLeft" title="Drag to set In Point">
+              <div class="fs-handle-icon">&#8214;</div>
+              <div class="fs-handle-tooltip" id="fsTooltipLeft">00:00.0</div>
+            </div>
+            <!-- Right bracket handle -->
+            <div class="fs-handle fs-handle-right" id="fsHandleRight" title="Drag to set Out Point">
+              <div class="fs-handle-icon">&#8214;</div>
+              <div class="fs-handle-tooltip" id="fsTooltipRight">00:30.0</div>
+            </div>
+            <!-- Top & bottom border lines -->
+            <div class="fs-sel-border-top"></div>
+            <div class="fs-sel-border-bottom"></div>
+          </div>
+
+          <!-- Red Playhead -->
+          <div class="fs-playhead" id="fsPlayhead">
+            <div class="fs-playhead-head"></div>
+            <div class="fs-playhead-time" id="fsPlayheadTime">00:00.0</div>
+          </div>
+
+        </div>
+
+        <!-- Controls Row -->
+        <div class="fs-controls-row">
+          <div class="fs-controls-left">
+            <button class="glow-btn" id="cropBtnPlayPause" style="min-width:90px;">▶ Play</button>
+            <button class="fs-keep-btn" id="fsKeepBtn">✂ Keep Clip</button>
+            <button class="fs-remove-btn" id="fsRemoveBtn">✕ Remove Clip</button>
+          </div>
+          <div class="fs-controls-center">
+            <div class="fs-time-box">
+              <span class="fs-time-label">IN</span>
+              <input type="text" class="fs-time-input" id="fsTimeIn" value="00:00.0" title="Click to edit start time (e.g., 00:02.5 or 2.5)">
+            </div>
+            <span class="fs-arrow">→</span>
+            <div class="fs-time-box">
+              <span class="fs-time-label">OUT</span>
+              <input type="text" class="fs-time-input" id="fsTimeOut" value="00:30.0" title="Click to edit end time (e.g., 00:04.6 or 4.6)">
+            </div>
+            <div class="fs-duration-badge" id="fsDurationBadge">30.0s</div>
+          </div>
+          <div class="fs-controls-right">
+            <select class="fs-format-select" id="fsFormatSelect">
+              <option value="mp4">MP4</option>
+              <option value="webm">WebM</option>
+            </select>
+            <button class="fs-export-btn" id="fsExportBtn" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+        </div>
+
+        <!-- Duration Presets Row -->
+        <div class="fs-duration-presets">
+          <span class="fs-preset-label">Quick Duration:</span>
+          <button class="fs-preset-btn" data-duration="5">5s</button>
+          <button class="fs-preset-btn" data-duration="15">15s</button>
+          <button class="fs-preset-btn" data-duration="20">20s</button>
+          <button class="fs-preset-btn active" data-duration="30">30s</button>
+          <button class="fs-preset-btn" data-duration="60">60s</button>
+          <div class="fs-custom-duration">
+            <input type="number" id="fsCustomDuration" class="fs-custom-input" placeholder="Custom" min="1" max="300" step="0.1">
+            <span class="fs-custom-unit">s</span>
+            <button id="fsSetCustomDuration" class="fs-custom-btn">Set</button>
+          </div>
+          <button id="fsSetFromCurrent" class="fs-from-current-btn" title="Set duration from current position">From Current</button>
+        </div>
+
+        <!-- Quick Trim & Export Row -->
+        <div class="fs-trim-export-row">
+          <span class="fs-preset-label">Quick Trim & Export:</span>
+          <button class="fs-trim-btn" data-trim-duration="5" data-folder="5s">✂ Trim 5s</button>
+          <button class="fs-trim-btn" data-trim-duration="8" data-folder="8s">✂ Trim 8s</button>
+          <button class="fs-trim-btn" data-trim-duration="10" data-folder="10s">✂ Trim 10s</button>
+        </div>
+
+        <!-- Render progress -->
+        <div id="cropRenderStatus" class="hidden" style="margin-top:0.6rem;">
+          <div class="progress-track" style="margin-bottom:0.4rem;"><div id="cropProgressFill" class="progress-fill" style="width:0%"></div></div>
+          <span id="cropStatusText" class="cyber-dim" style="font-size:0.72rem;">Rendering…</span>
+        </div>
+        <div id="cropResultCard" class="hidden glass-card" style="margin-top:0.8rem;padding:0.8rem;">
+          <p class="neon-label" style="color:#22c55e;margin-bottom:0.5rem;">✅ Exported Successfully</p>
+          <a id="cropResultLink" href="#" target="_blank" class="glow-btn" style="display:block;text-align:center;font-size:0.75rem;">▶ OPEN IN BROWSER</a>
+        </div>
+
+        <!-- Keyboard & Interaction Cheatsheet -->
+        <div class="fs-cheatsheet" style="display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-top: 1rem; padding: 0.5rem 0.8rem; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.06); border-radius: 6px; font-size: 0.68rem; color: rgba(255,255,255,0.45); flex-wrap: wrap;">
+          <span>💡 <strong>Quick Scrub:</strong> Click & Drag Time Ruler to scrub video.</span>
+          <span style="color: rgba(255,255,255,0.15);">|</span>
+          <span>⌨ <strong>Shortcuts:</strong> <kbd style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); color: #fff;">Space</kbd> Play/Pause</span>
+          <span><kbd style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); color: #fff;">I</kbd> Set In</span>
+          <span><kbd style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); color: #fff;">O</kbd> Set Out</span>
+          <span><kbd style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); color: #fff;">←</kbd> / <kbd style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); color: #fff;">→</kbd> Frame Step</span>
+        </div>
+
+      </div><!-- /filmstrip-section -->
+
+    </div><!-- /crop-canvas-col -->
+
+    <!-- RIGHT: 9:16 Live Preview -->
+    <div class="crop-preview-col glass-card">
+      <!-- Burning Status -->
+      <div id="subBurnProgressSection" class="hidden" style="margin-top: 1rem;">
+        <div class="progress-track" style="margin-bottom: 0.5rem;">
+          <div id="subBurnProgressFill" class="progress-fill" style="width: 0%"></div>
+        </div>
+        <p id="subBurnStatusText" class="cyber-dim" style="font-size: 0.75rem;">Burning subtitles into video…</p>
+      </div>
+
+      <!-- Progress Section -->
+      <div class="panel-header">
+        <span class="step-num" style="font-size:0.65rem;">PRV</span>
+        <h2>9:16 PREVIEW</h2>
+      </div>
+      <div class="crop-preview-wrapper">
+        <canvas id="cropPreview" class="crop-preview-canvas"></canvas>
+        <div class="crop-preview-label">1080 × 1920</div>
+      </div>
+      <p class="cyber-dim" style="font-size:0.65rem;text-align:center;margin-top:0.5rem;">Live preview of the crop window<br>as it will appear in the final short</p>
+    </div><!-- /crop-preview-col -->
+
+  </div><!-- /crop-studio-layout -->
+</div>

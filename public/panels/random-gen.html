@@ -1,0 +1,301 @@
+<div class="tab-panel hidden" id="panelRandomGen">
+  <main class="app-grid">
+    <!-- LEFT: CONFIGURATION -->
+    <section class="ops-panel glass-card">
+
+      <!-- STEP 01 – SOURCE INPUT -->
+      <div class="panel-header">
+        <span class="step-num">01</span>
+        <h2>RANDOM CLIPS SOURCE</h2>
+      </div>
+
+      <div class="input-group">
+        <label class="neon-label">Local Media File</label>
+        <div class="path-input-wrapper">
+          <input type="text" id="randomFilePath" placeholder="Click BROWSE or paste absolute path…" autocomplete="off" />
+          <button id="randomBtnBrowse" class="glow-btn browse-btn">BROWSE</button>
+          <button id="randomBtnProbe" class="glow-btn">ANALYZE</button>
+        </div>
+        <p class="helper-text">Select video to generate random clips from</p>
+      </div>
+
+      <!-- Probe result card -->
+      <div id="randomProbeResult" class="probe-result-card hidden">
+        <div class="probe-meta-grid">
+          <div class="meta-item"><span class="label">FILE</span><span id="randomMetaFileName" class="value">—</span></div>
+          <div class="meta-item"><span class="label">DURATION</span><span id="randomMetaDuration" class="value">—</span></div>
+          <div class="meta-item"><span class="label">RESOLUTION</span><span id="randomMetaResolution" class="value">—</span></div>
+        </div>
+      </div>
+
+      <!-- ══ STEP 02 – RANDOM GENERATION SETTINGS ══════════════════════ -->
+      <div id="randomConfigSection" class="config-section disabled-state">
+
+        <div class="panel-header">
+          <span class="step-num">02</span>
+          <h2>RANDOM GENERATION</h2>
+        </div>
+
+        <div class="input-group">
+          <label class="neon-label">Number of Clips</label>
+          <div class="path-input-wrapper">
+            <input type="number" id="randomClipCount" value="5" min="1" max="100" />
+            <span class="helper-text" style="margin-left: 10px;">clips to generate</span>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label class="neon-label">Clip Duration</label>
+          <div class="random-duration-options">
+            <button class="random-dur-btn active" data-duration="5">5 seconds</button>
+            <button class="random-dur-btn" data-duration="8">8 seconds</button>
+            <button class="random-dur-btn" data-duration="10">10 seconds</button>
+            <button class="random-dur-btn" data-duration="15">15 seconds</button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label class="neon-label">Minimum Gap Between Clips</label>
+          <div class="path-input-wrapper">
+            <input type="number" id="randomMinGap" value="2" min="0" max="30" />
+            <span class="helper-text" style="margin-left: 10px;">seconds</span>
+          </div>
+        </div>
+
+        <div class="config-grid" style="grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+          <div class="input-group">
+            <label class="neon-label">Output Format</label>
+            <select id="randomFormat" class="glow-select" style="width:100%;">
+              <option value="mp4">MP4</option>
+              <option value="webm">WebM</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="neon-label">Framing style</label>
+            <select id="randomFitMode" class="glow-select" style="width:100%;">
+              <option value="blur" selected>✨ Blur Pad</option>
+              <option value="crop">✂Center Crop</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="randomBtnGenerate" class="glow-btn generate-btn" style="width: 100%; margin-top: 1rem;">
+          🎲 GENERATE RANDOM CLIPS
+        </button>
+      </div>
+
+      <!-- ══ STEP 03 – MANUAL CLIP CUTTER ══════════════════════════════ -->
+      <div id="randomManualSection" class="config-section disabled-state" style="margin-top: 1.4rem;">
+        <div class="panel-header">
+          <span class="step-num">03</span>
+          <h2>MANUAL CLIP CUTTER</h2>
+        </div>
+
+        <!-- Video Preview + 9:16 Crop Visualizer -->
+        <div style="display: flex; gap: 0.6rem; margin-bottom: 0.6rem; align-items: flex-start;">
+
+          <!-- Left: Landscape player with crop-window overlay -->
+          <div style="flex: 1; position: relative; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
+            <video id="manualPreviewPlayer" style="width: 100%; height: 130px; object-fit: contain; display: block;" preload="metadata"></video>
+            <!-- Crop window overlay: drawn by JS, shows which 9:16 slice is selected -->
+            <canvas id="manualCropOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+            <span style="position: absolute; bottom: 4px; left: 6px; font-size: 0.48rem; color: rgba(255,255,255,0.3); font-family: monospace; letter-spacing: 0.05em; pointer-events: none;">FULL FRAME</span>
+          </div>
+
+          <!-- Right: Live 9:16 portrait crop preview -->
+          <div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <span style="font-size: 0.5rem; color: var(--accent-cyan); letter-spacing: 0.1em; font-weight: 700; text-transform: uppercase;">9:16</span>
+            <div style="position: relative; border-radius: 6px; overflow: hidden; border: 1.5px solid rgba(6,182,212,0.5); box-shadow: 0 0 10px rgba(6,182,212,0.2);">
+              <canvas id="manualCropPreview" width="73" height="130" style="display: block; background: #0d0d0d;"></canvas>
+              <div id="manualCropPreviewPlaceholder" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); font-size: 0.5rem; color: rgba(255,255,255,0.3); text-align: center; line-height: 1.4; padding: 4px;">Analyze<br>video<br>first</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Scrubber + Time display -->
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
+          <input type="range" id="manualScrubber" min="0" max="100" step="0.1" value="0" class="crop-slider" style="flex: 1;" />
+          <span id="manualCurrentTime" style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--accent-cyan); white-space: nowrap; min-width: 60px; text-align: right;">00:00:00</span>
+        </div>
+
+        <!-- Set Start Point -->
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.7rem;">
+          <button id="manualBtnSetStart" class="glow-btn" style="flex: 0 0 auto; font-size: 0.72rem; padding: 0.4rem 0.8rem; background: rgba(6,182,212,0.15); border-color: rgba(6,182,212,0.4); color: var(--accent-cyan);">
+            📍 SET START
+          </button>
+          <div style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0.35rem 0.6rem; display: flex; align-items: center; gap: 0.4rem;">
+            <span style="font-size: 0.62rem; color: rgba(255,255,255,0.4);">START:</span>
+            <span id="manualStartDisplay" style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #fff;">— not set —</span>
+          </div>
+        </div>
+
+        <!-- Duration Buttons -->
+        <div class="input-group" style="margin-bottom: 0.7rem;">
+          <label class="neon-label" style="margin-bottom: 0.4rem;">Clip Duration</label>
+          <div class="random-duration-options">
+            <button class="manual-dur-btn active" data-dur="5">5s</button>
+            <button class="manual-dur-btn" data-dur="8">8s</button>
+            <button class="manual-dur-btn" data-dur="10">10s</button>
+            <button class="manual-dur-btn" data-dur="15">15s</button>
+            <button class="manual-dur-btn" data-dur="30">30s</button>
+            <button class="manual-dur-btn" data-dur="60">1 min</button>
+          </div>
+        </div>
+
+        <!-- Format + Framing -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 0.8rem;">
+          <div class="input-group">
+            <label class="neon-label" style="font-size: 0.62rem;">Format</label>
+            <select id="manualFormat" class="glow-select" style="width:100%;">
+              <option value="mp4">MP4</option>
+              <option value="webm">WebM</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="neon-label" style="font-size: 0.62rem;">Framing</label>
+            <select id="manualFitMode" class="glow-select" style="width:100%;">
+              <option value="blur" selected>✨ Blur Pad</option>
+              <option value="crop">✂ Center Crop</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Interactive Alignment Station (Bigger, User-Friendly Controls) -->
+        <div id="manualAlignStation" style="margin-bottom: 0.8rem; background: rgba(6,182,212,0.03); border: 1px solid rgba(6,182,212,0.15); padding: 0.6rem 0.8rem; border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <label id="manualAlignLabel" class="neon-label" style="font-size: 0.65rem; color: var(--accent-cyan); letter-spacing: 0.05em;">↔ CROP ALIGNMENT (NEW CLIP)</label>
+            <span id="manualPanVal" style="color: var(--accent-cyan); font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: bold; background: rgba(6,182,212,0.1); padding: 2px 6px; border-radius: 4px;">Center</span>
+          </div>
+          
+          <!-- Big Snap Buttons -->
+          <div style="display: flex; gap: 0.4rem; margin-bottom: 0.6rem;">
+            <button type="button" id="manualSnapL" class="glow-btn" style="flex: 1; padding: 0.4rem 0; font-size: 0.68rem; background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.1);">◀ LEFT</button>
+            <button type="button" id="manualSnapC" class="glow-btn" style="flex: 1; padding: 0.4rem 0; font-size: 0.68rem; background: rgba(168,85,247,0.1); border-color: rgba(168,85,247,0.3); color: var(--accent-purple);">⊙ CENTER</button>
+            <button type="button" id="manualSnapR" class="glow-btn" style="flex: 1; padding: 0.4rem 0; font-size: 0.68rem; background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.1);">RIGHT ▶</button>
+          </div>
+
+          <!-- Big Range Slider -->
+          <input type="range" id="manualPanSlider" min="-1" max="1" step="0.02" value="0" class="crop-slider" style="width: 100%; display: block;" />
+          
+          <div style="display: flex; justify-content: space-between; margin-top: 0.3rem; font-size: 0.56rem; color: rgba(255,255,255,0.35);">
+            <span>◀ Full Left</span>
+            <span>Double-click slider to reset</span>
+            <span>Full Right ▶</span>
+          </div>
+        </div>
+
+        <!-- Add to Queue -->
+        <button id="manualBtnAddClip" class="glow-btn" style="width: 100%; margin-bottom: 0.8rem; background: linear-gradient(135deg,rgba(168,85,247,0.2),rgba(59,130,246,0.15)); border-color: rgba(168,85,247,0.45);">
+          ➕ ADD TO QUEUE
+        </button>
+
+        <!-- Queue List -->
+        <div id="manualQueueWrapper" class="hidden">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+            <label class="neon-label" style="font-size: 0.65rem; color: var(--accent-purple);">
+              📋 MANUAL QUEUE (<span id="manualQueueCount">0</span> clips)
+            </label>
+            <button id="manualBtnClearQueue" class="proposed-btn" style="font-size: 0.6rem; color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08);">Clear All</button>
+          </div>
+          <div id="manualQueueList" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 200px; overflow-y: auto; padding-right: 4px; margin-bottom: 0.7rem;">
+            <!-- Dynamic queue items -->
+          </div>
+
+          <!-- Progress (while rendering) -->
+          <div id="manualProgressSection" class="hidden" style="margin-bottom: 0.6rem;">
+            <div class="progress-track" style="margin-bottom: 0.3rem;">
+              <div id="manualProgressFill" class="progress-fill" style="width: 0%;"></div>
+            </div>
+            <p id="manualStatusText" class="cyber-dim" style="font-size: 0.72rem;">Rendering…</p>
+          </div>
+
+          <button id="manualBtnRender" class="glow-btn generate-btn" style="width: 100%; background: linear-gradient(135deg,rgba(6,182,212,0.3),rgba(16,185,129,0.2)); border-color: rgba(6,182,212,0.5);">
+            🎬 RENDER MANUAL CLIPS (<span id="manualRenderCount">0</span>)
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT: PREVIEW & RESULTS -->
+    <section class="results-panel glass-card">
+      <div class="panel-header">
+        <span class="step-num">03</span>
+        <h2>GENERATION HUB</h2>
+      </div>
+
+      <!-- Proposed Clips Pre-render Stage -->
+      <div id="randomProposedSection" class="hidden" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 0.8rem;">
+        <h3 class="neon-label" style="color:var(--accent-cyan); font-size: 0.72rem; margin-bottom: 0.2rem;">🔍 REVIEW RANDOM CLIP PROPOSALS</h3>
+        
+        <!-- Video Preview Player (Interactive 9:16 mockup) -->
+        <div class="player-wrapper" style="border-radius: 12px; overflow: hidden; background: #000; border: 1px solid rgba(255,255,255,0.15); margin: 0.4rem auto; width: 135px; height: 240px; display: flex; align-items: center; justify-content: flex-start; position: relative; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">
+          <video id="randomPreviewPlayer" controls style="position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: none;"></video>
+        </div>
+
+        <!-- Panning Adjuster Slider -->
+        <div id="randomPanAdjusterGroup" class="input-group" style="margin-bottom: 0.6rem;">
+          <div class="label-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+            <label class="neon-label" style="font-size: 0.65rem;">↔ ADJUST CROP POSITION</label>
+            <span id="randomPanVal" style="color:var(--accent-cyan); font-size: 0.65rem; font-family: monospace;">Center</span>
+          </div>
+          <input type="range" id="randomPanSlider" min="-1" max="1" step="0.05" value="0" class="crop-slider" style="width: 100%;">
+        </div>
+
+        <div id="randomProposedList" class="proposed-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 240px; overflow-y: auto; padding-right: 4px;">
+          <!-- Dynamic proposed items inserted here -->
+        </div>
+
+        <!-- Proposed Clips Timeline Visualizer -->
+        <div id="randomTimelineContainer" class="input-group hidden" style="margin-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.8rem;">
+          <div class="label-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+            <label class="neon-label" style="font-size: 0.65rem;">PROPOSED CLIPS TIMELINE</label>
+            <span id="randomTimelineDurationLabel" style="font-family: monospace; font-size: 0.65rem; color: var(--accent-purple);">0:00</span>
+          </div>
+          <div class="timeline-visual-wrapper" style="position: relative; margin-bottom: 0.3rem;">
+            <div id="randomTimelineTrack" class="timeline-track" style="background: rgba(255,255,255,0.05); height: 28px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden; cursor: pointer;">
+              <!-- Dynamic clip block overlays will be placed here -->
+            </div>
+          </div>
+        </div>
+
+        <button id="randomBtnStartRender" class="glow-btn" style="width: 100%; margin-top: 0.5rem; background: var(--accent-cyan); color: #000;">
+          🎬 GENERATE SELECTED CLIPS
+        </button>
+      </div>
+
+      <!-- Progress section -->
+      <div id="randomProgressSection" class="hidden">
+        <div class="progress-track" style="margin-bottom: 0.5rem;">
+          <div id="randomProgressFill" class="progress-fill" style="width: 0%"></div>
+        </div>
+        <p id="randomStatusText" class="cyber-dim" style="font-size: 0.75rem;">Initializing…</p>
+      </div>
+
+      <!-- Completed results section -->
+      <div id="randomResultsSection" class="hidden">
+        <h3 class="neon-label" style="margin-bottom: 1rem; color: #22c55e;">✅ Generated Clips</h3>
+        <div id="randomResultsList" class="results-list">
+          <!-- Results will be injected here -->
+        </div>
+      </div>
+
+      <div id="randomEmptyState" class="empty-state">
+        <p class="cyber-dim">Configure source and click generate to roll clip proposals</p>
+      </div>
+
+      <!-- Archived Shorts Library Section -->
+      <div id="randomLibrarySection" style="margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1.2rem;">
+        <h3 class="neon-label" style="color:var(--accent-purple); font-size: 0.72rem; margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: space-between;">
+          📁 ARCHIVED SHORTS LIBRARY
+          <button id="randomBtnRefreshLibrary" class="proposed-btn" style="background: rgba(168, 85, 247, 0.12); color: var(--accent-purple); border-color: rgba(168, 85, 247, 0.25);">🔄 Refresh</button>
+        </h3>
+        
+        <div id="randomLibraryList" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 280px; overflow-y: auto; padding-right: 4px;">
+          <div class="cyber-dim" style="font-size: 0.7rem; text-align: center; padding: 1rem 0;">Scanning directory…</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

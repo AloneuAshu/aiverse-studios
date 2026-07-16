@@ -1,0 +1,323 @@
+<div class="tab-panel" id="panelBatchGen">
+<main class="app-grid">
+  <!-- Left: Configuration -->
+  <section class="ops-panel glass-card">
+
+    <!-- STEP 01 - SOURCE INPUT -->
+    <div class="panel-header">
+      <span class="step-num">01</span>
+      <h2>AIVERSE SOURCE INPUT</h2>
+    </div>
+
+    <div class="input-group">
+      <label class="neon-label">Local Media File</label>
+      <div class="path-input-wrapper">
+        <input type="text" id="filePath" placeholder="Click BROWSE or paste absolute path…" autocomplete="off" />
+        <button id="btnBrowse"  class="glow-btn browse-btn">BROWSE</button>
+        <button id="btnProbe"   class="glow-btn">ANALYZE</button>
+      </div>
+      <p class="helper-text">MP4 · MKV · AVI (video) &nbsp;|&nbsp; MP3 · WAV (audio) — supports 8 GB+ files</p>
+    </div>
+
+    <!-- Probe result card -->
+    <div id="probeResult" class="probe-result-card hidden">
+      <div class="probe-meta-grid">
+        <div class="meta-item"><span class="label">FILE</span><span id="metaFileName" class="value">—</span></div>
+        <div class="meta-item"><span class="label">SIZE</span><span id="metaSize"     class="value">—</span></div>
+        <div class="meta-item"><span class="label">DURATION</span><span id="metaDuration" class="value">—</span></div>
+        <div class="meta-item"><span class="label">RESOLUTION</span><span id="metaResolution" class="value">—</span></div>
+      </div>
+      <div id="mediaTypeBadge" class="media-badge">VIDEO</div>
+      <div id="inputThumbnailWrapper" class="thumbnail-wrapper hidden">
+        <img id="inputThumbnail" src="" alt="Source Preview">
+        <div class="scanline"></div>
+      </div>
+    </div>
+
+    <!-- ══ STEP 02 – TEMPLATE SYSTEM ══════════════════════════════════ -->
+    <div id="configSection" class="config-section disabled-state">
+
+      <div class="panel-header">
+        <span class="step-num">02</span>
+        <h2>TEMPLATE ENGINE</h2>
+        <!-- Toggle switch -->
+        <label class="toggle-switch" title="Enable Template">
+          <input type="checkbox" id="toggleTemplate">
+          <span class="toggle-track">
+            <span class="toggle-thumb"></span>
+          </span>
+          <span class="toggle-label">USE TEMPLATE</span>
+        </label>
+      </div>
+
+      <!-- Template folder selector (shown when enabled) -->
+      <div id="templatePanel" class="template-panel hidden">
+        <div class="input-group">
+          <label class="neon-label">Template Folder</label>
+          <div class="path-input-wrapper">
+            <input type="text" id="templateFolderPath" placeholder="Select template folder with Video1 + TitleCard…" readonly />
+            <button id="btnBrowseFolder" class="glow-btn browse-btn">BROWSE FOLDER</button>
+            <button id="btnScanTemplate" class="glow-btn">SCAN</button>
+          </div>
+        </div>
+
+        <!-- Template video cards (filled after scan) -->
+        <div id="templateCards" class="template-cards hidden">
+          <!-- Mid Clip Card -->
+          <div class="tpl-card mid-card">
+            <div class="tpl-card-header">
+              <span class="tpl-badge mid">MID INSERT</span>
+              <span class="tpl-badge-sub">Placed in the centre of every short</span>
+            </div>
+            <div class="tpl-meta">
+              <span id="midFileName" class="tpl-filename">—</span>
+              <span id="midDuration" class="tpl-dur">—</span>
+            </div>
+            <div class="tpl-slice-row">
+              <label class="neon-label" style="font-size:0.65rem">EXTRACT LAST</label>
+              <div class="slice-counter">
+                <button class="counter-btn" data-target="midSecs" data-dir="-">−</button>
+                <input type="number" id="midSecs" value="3" min="1" max="10" readonly>
+                <button class="counter-btn" data-target="midSecs" data-dir="+">+</button>
+                <span class="slice-unit">sec</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- End / Title Card -->
+          <div class="tpl-card end-card">
+            <div class="tpl-card-header">
+              <span class="tpl-badge end">TITLE CARD</span>
+              <span class="tpl-badge-sub">Always the final clip</span>
+            </div>
+            <div class="tpl-meta">
+              <span id="endFileName" class="tpl-filename">—</span>
+              <span id="endDuration" class="tpl-dur">—</span>
+            </div>
+            <div class="tpl-slice-row">
+              <label class="neon-label" style="font-size:0.65rem">EXTRACT LAST</label>
+              <div class="slice-counter">
+                <button class="counter-btn" data-target="endSecs" data-dir="-">−</button>
+                <input type="number" id="endSecs" value="3" min="1" max="10" readonly>
+                <button class="counter-btn" data-target="endSecs" data-dir="+">+</button>
+                <span class="slice-unit">sec</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Structure Visualiser (shown after scan) -->
+        <div id="structureVis" class="structure-vis hidden">
+          <label class="neon-label">FINAL SHORT STRUCTURE PREVIEW</label>
+          <div class="structure-track">
+            <div class="st-seg random-seg" id="stRand1"><span>RANDOM CLIPS A</span></div>
+            <div class="st-seg mid-seg"    id="stMid"><span id="stMidLabel">VIDEO1 3s</span></div>
+            <div class="st-seg random-seg" id="stRand2"><span>RANDOM CLIPS B</span></div>
+            <div class="st-seg end-seg"    id="stEnd"><span id="stEndLabel">TITLE 3s</span></div>
+          </div>
+          <div class="structure-legend">
+            <span class="leg-dot random-dot"></span><span>Random Content</span>
+            <span class="leg-dot mid-dot"></span><span>Mid Template</span>
+            <span class="leg-dot end-dot"></span><span>Title Card</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ STEP 03 – CREATIVE CONFIG ════════════════════════════════ -->
+      <div class="panel-header" style="margin-top:0.4rem">
+        <span class="step-num">03</span>
+        <h2>CREATIVE CONFIGURATION</h2>
+      </div>
+
+      <!-- Selection mode toggler -->
+      <div class="mode-toggle-group">
+        <label class="neon-label">CLIP SELECTION MODE</label>
+        <div class="mode-buttons-row">
+          <button type="button" id="btnModeAuto" class="mode-btn active" data-mode="automatic">🤖 AUTOMATIC</button>
+          <button type="button" id="btnModeManual" class="mode-btn" data-mode="manual">✍️ MANUAL SELECT</button>
+        </div>
+      </div>
+
+      <!-- Timeline (Common for both) -->
+      <div class="input-group">
+        <div class="label-row">
+          <label class="neon-label" id="timelineTitle">SELECTED CLIP TIMELINES</label>
+          <button id="btnReroll" class="action-link-btn" disabled>🎲 Reroll Clips</button>
+        </div>
+        <div class="timeline-visual-wrapper" style="position: relative;">
+          <div id="timelineTrack" class="timeline-track">
+            <div id="hoverCursor" class="hover-cursor hidden"></div>
+          </div>
+          <div class="timeline-time-labels">
+            <span>0:00</span>
+            <span id="timelineDurationLabel">0:00</span>
+          </div>
+          
+          <!-- Floating preview tooltip -->
+          <div id="timelineTooltip" class="timeline-tooltip hidden">
+            <div class="tooltip-media">
+              <img id="tooltipThumb" src="" alt="Preview Frame">
+              <div class="scanline"></div>
+            </div>
+            <span id="tooltipTime" class="tooltip-time-badge">0:00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual Selection Panel (visible in Manual Mode) -->
+      <div id="manualClipsPanel" class="manual-clips-panel hidden">
+        <label class="neon-label" style="margin-bottom:0.4rem; display:block;">DRAG & REORDER CLIPS (5 SECONDS EACH)</label>
+        <div id="clipListContainer" class="clip-list-container">
+          <!-- Clip cards generated dynamically -->
+        </div>
+      </div>
+
+      <!-- Aspect Ratio + Fit Mode -->
+      <div class="config-grid">
+        <div class="input-group">
+          <label class="neon-label">FORMAT RATIO</label>
+          <div class="ratio-select-row">
+            <button class="ratio-btn active" data-ratio="vertical">
+              <div class="ratio-box vertical"></div><span>9:16</span>
+            </button>
+            <button class="ratio-btn" data-ratio="square">
+              <div class="ratio-box square"></div><span>1:1</span>
+            </button>
+            <button class="ratio-btn" data-ratio="landscape">
+              <div class="ratio-box landscape"></div><span>16:9</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="input-group" id="fitModeGroup">
+          <label class="neon-label">FRAMING ADAPTATION</label>
+          <div class="fit-select-row">
+            <button class="fit-btn active" data-fit="blur"><span class="fit-icon">✨</span><span>Blur Pad</span></button>
+            <button class="fit-btn" data-fit="crop"><span class="fit-icon">✂️</span><span>Center Crop</span></button>
+            <button class="fit-btn" data-fit="pad"><span class="fit-icon">🔳</span><span>Letterbox</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vibe (Automatic Mode only) + Batch Count -->
+      <div class="config-grid-secondary">
+        <div class="input-group" id="vibeConfigGroup">
+          <label class="neon-label">AUTOMATIC VIBE</label>
+          <select id="vibeSelector">
+            <option value="cinematic" selected>🎬 Cinematic Flow (2–3 Long Cuts)</option>
+            <option value="random">🎲 True Random Mix (Varying Cuts)</option>
+            <option value="fast-cut">⚡ Fast Cut High-Energy (8–10 Cuts)</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label class="neon-label">NO. OF SHORTS TO BATCH</label>
+          <div class="batch-counter">
+            <button id="btnDecBatch" class="counter-btn">−</button>
+            <input type="number" id="batchCount" value="1" min="1" max="10" readonly>
+            <button id="btnIncBatch" class="counter-btn">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overlay text + Volume -->
+      <div class="config-grid-tertiary">
+        <div class="input-group">
+          <label class="neon-label">TITLE OVERLAY (OPTIONAL)</label>
+          <input type="text" id="overlayText" placeholder="E.g., EPISODE 01">
+        </div>
+        <div class="input-group">
+          <label class="neon-label">AUDIO VOLUME</label>
+          <div class="volume-slider-wrapper">
+            <input type="range" id="volumeSlider" min="0" max="2" step="0.1" value="1">
+            <span id="volumeVal">100%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clip-to-Clip Transition Fade -->
+      <div class="input-group fade-transition-group">
+        <div class="label-row">
+          <label class="neon-label">🎞 CLIP TRANSITION FADE</label>
+          <span class="neon-label" id="fadePreviewLabel" style="color:var(--accent-cyan);font-size:0.65rem;">500ms · Cinematic</span>
+        </div>
+        <div class="fade-btn-row" id="fadeSelector">
+          <button class="fade-btn" data-fade="0" id="fadeBtnHard">
+            <span class="fade-icon">✂️</span>
+            <span class="fade-label">Hard Cut</span>
+            <span class="fade-sub">0ms</span>
+          </button>
+          <button class="fade-btn" data-fade="0.25" id="fadeBtnQuick">
+            <span class="fade-icon">⚡</span>
+            <span class="fade-label">Quick</span>
+            <span class="fade-sub">250ms</span>
+          </button>
+          <button class="fade-btn active" data-fade="0.5" id="fadeBtnCinematic">
+            <span class="fade-icon">🎬</span>
+            <span class="fade-label">Cinematic</span>
+            <span class="fade-sub">500ms</span>
+          </button>
+          <button class="fade-btn" data-fade="0.8" id="fadeBtnSlowBurn">
+            <span class="fade-icon">🌑</span>
+            <span class="fade-label">Slow Burn</span>
+            <span class="fade-sub">800ms</span>
+          </button>
+        </div>
+        <div class="fade-visualizer" id="fadeVisualizer">
+          <div class="fv-clip"></div>
+          <div class="fv-fade" id="fvFade"></div>
+          <div class="fv-black">■</div>
+          <div class="fv-fade" id="fvFade2"></div>
+          <div class="fv-clip"></div>
+        </div>
+      </div>
+
+      <!-- GENERATE BUTTON -->
+      <button id="btnGenerate" class="spark-btn disabled-state">
+        <span class="glow-bg"></span>
+        <span class="btn-text">⚡ INITIALIZE QUANTUM GENERATION</span>
+      </button>
+
+    </div><!-- /configSection -->
+  </section>
+
+  <!-- ══ RIGHT: QUEUE & PREVIEW ════════════════════════════════════════ -->
+  <section class="preview-panel glass-card">
+
+    <div class="panel-header">
+      <span class="step-num">04</span>
+      <h2>NEURAL QUEUE & RENDER HUB</h2>
+    </div>
+
+    <!-- Queue Board -->
+    <div id="queueBoard" class="queue-board hidden">
+      <h3 class="section-title">ACTIVE RENDER QUEUE</h3>
+      <div id="queueCardsContainer" class="queue-cards-grid"></div>
+    </div>
+
+    <!-- Player -->
+    <div id="playerPanel" class="player-panel hidden">
+      <h3 class="section-title">ACTIVE PREVIEW</h3>
+      <div class="player-wrapper" id="playerWrapper">
+        <video id="previewPlayer" controls autoplay loop></video>
+      </div>
+      <div class="player-actions">
+        <a id="btnDownload" href="" download class="glow-btn download-btn">DOWNLOAD SHORT</a>
+        <button id="btnOpenFolder" class="icon-btn-secondary">📁 Open Exports Folder</button>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="history-gallery-section">
+      <div class="history-header">
+        <h3 class="section-title">GENERATED LOG ARCHIVES</h3>
+        <button id="btnRefreshHistory" class="refresh-btn">🔄 Refresh</button>
+      </div>
+      <div id="historyGrid" class="history-grid">
+        <div class="history-empty"><p class="cyber-dim">No shorts generated yet.</p></div>
+      </div>
+    </div>
+
+  </section>
+</main>
+</div>

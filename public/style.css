@@ -57,10 +57,216 @@ body {
 
 /* --- App Layout ----------------------------------------------------------- */
 .app-container {
-  max-width: 1500px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
-  display: flex; flex-direction: column; gap: 1.5rem;
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* --- Left Sidebar --------------------------------------------------------- */
+.app-sidebar {
+  width: 260px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  left: 0;
+  background: rgba(10, 14, 25, 0.96);
+  border-right: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+}
+.app-sidebar.collapsed {
+  width: 70px;
+}
+
+/* Sidebar branding section */
+.sidebar-brand {
+  padding: 1.5rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: opacity 0.2s ease, padding 0.3s ease, height 0.3s ease;
+  height: 95px;
+  overflow: hidden;
+}
+.app-sidebar.collapsed .sidebar-brand {
+  opacity: 0;
+  pointer-events: none;
+  padding: 0;
+  height: 0;
+  border-bottom: none;
+}
+.sidebar-logo-text {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #fff 30%, var(--accent-cyan) 60%, var(--accent-purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1;
+}
+.sidebar-logo-sub {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: #fff;
+  text-transform: uppercase;
+  margin-top: 0.2rem;
+  margin-left: 6px;
+}
+
+/* Toggle Collapse Button */
+.sidebar-toggle-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 0.4rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin: 1rem auto;
+  width: 40px;
+  height: 40px;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  outline: none;
+}
+.sidebar-toggle-btn:hover {
+  background: rgba(6, 182, 212, 0.1);
+  color: var(--accent-cyan);
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+/* Sidebar navigation */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 0.75rem;
+  flex: 1;
+  overflow-y: auto;
+}
+.app-sidebar.collapsed .sidebar-nav {
+  padding: 1rem 0.4rem;
+}
+
+/* Navigation tabs in Sidebar */
+.sidebar-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  width: 100%;
+  text-align: left;
+  position: relative;
+  white-space: nowrap;
+  outline: none;
+}
+.app-sidebar.collapsed .sidebar-tab {
+  justify-content: center;
+  padding: 0.8rem 0;
+  gap: 0;
+}
+.sidebar-tab:hover {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.02);
+}
+.sidebar-tab.active {
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.06);
+  border-color: rgba(6, 182, 212, 0.15);
+  box-shadow: inset 3px 0 0 var(--accent-cyan);
+}
+.sidebar-tab .tab-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+.sidebar-tab .tab-label {
+  transition: opacity 0.2s ease;
+}
+.app-sidebar.collapsed .sidebar-tab .tab-label {
+  display: none;
+}
+.sidebar-tab .tab-badge {
+  font-size: 0.52rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+  color: #000;
+  padding: 0.1rem 0.35rem;
+  border-radius: 50px;
+  letter-spacing: 0.3px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.app-sidebar.collapsed .sidebar-tab .tab-badge {
+  display: none;
+}
+
+/* Sidebar Footer Slogan */
+.sidebar-footer {
+  text-align: center;
+  padding: 1.2rem 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: auto;
+  transition: opacity 0.2s ease, padding 0.3s ease, height 0.3s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.app-sidebar.collapsed .sidebar-footer {
+  opacity: 0;
+  pointer-events: none;
+  padding: 0;
+  height: 0;
+  border-top: none;
+}
+
+/* --- Main Content Wrapper ------------------------------------------------- */
+.app-main-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+#appPanelContainer {
+  flex: 1;
+  width: 100%;
+}
+.tab-panel {
+  width: 100%;
+  animation: fadeIn 0.35s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* --- Header --------------------------------------------------------------- */
