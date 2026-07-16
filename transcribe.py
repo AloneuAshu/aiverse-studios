@@ -10,6 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--input', required=True)
 parser.add_argument('--lang', default='en-US')
 parser.add_argument('--output_srt', required=True)
+parser.add_argument('--detect_gender', action='store_true', default=False)
 args = parser.parse_args()
 
 # Extract WAV audio using FFmpeg
@@ -68,12 +69,49 @@ if lang_code == 'auto':
     print(f"Detected language: {lang_code}")
     sys.stdout.flush()
 
+# ----------------------------------------------------------------------------
+# Gender detection helper (pitch-based via librosa)
+# ----------------------------------------------------------------------------
+def detect_gender_from_wav(wav_path):
+    """
+    Estimate voice gender from a mono WAV file using fundamental frequency (F0).
+    Male voices: ~85-165 Hz  |  Female voices: ~165-255 Hz
+    Returns 'MALE', 'FEMALE', or 'UNKNOWN'
+    """
+    try:
+        import librosa
+        import numpy as np
+        y, sr_lib = librosa.load(wav_path, sr=None, mono=True)
+        if len(y) < sr_lib * 0.3:   # too short
+            return 'UNKNOWN'
+        # Use PYIN for robust F0 estimation
+        f0, voiced_flag, _ = librosa.pyin(
+            y,
+            fmin=librosa.note_to_hz('C2'),   # ~65 Hz
+            fmax=librosa.note_to_hz('C6'),   # ~1047 Hz
+            sr=sr_lib
+        )
+        voiced_f0 = f0[voiced_flag & ~np.isnan(f0)] if f0 is not None else []
+        if len(voiced_f0) == 0:
+            return 'UNKNOWN'
+        median_f0 = float(np.median(voiced_f0))
+        # Threshold: below 165 Hz → male, above → female
+        if median_f0 < 165:
+            return 'MALE'
+        else:
+            return 'FEMALE'
+    except Exception as e:
+        print(f"[GENDER] Warning: {e}", file=sys.stderr)
+        return 'UNKNOWN'
+
 # Transcribe chunks to SRT
 r = sr.Recognizer()
 srt_entries = []
 num_chunks = (duration_ms + chunk_len_ms - 1) // chunk_len_ms
 
 print(f"Transcribing {num_chunks} chunks in language: {lang_code}...")
+if args.detect_gender:
+    print("Gender detection: ENABLED")
 sys.stdout.flush()
 
 def format_srt_time(ms):
@@ -89,6 +127,7 @@ for idx in range(num_chunks):
     chunk_wav = f"temp_chunk_{idx}.wav"
     chunk.export(chunk_wav, format="wav")
     text = ""
+    gender = "UNKNOWN"
     try:
         with sr.AudioFile(chunk_wav) as source:
             audio_data = r.record(source)
@@ -97,18 +136,38 @@ for idx in range(num_chunks):
         pass
     except Exception:
         pass
+
+    # Gender detection on same chunk WAV
+    if args.detect_gender and os.path.exists(chunk_wav):
+        gender = detect_gender_from_wav(chunk_wav)
+
     if os.path.exists(chunk_wav):
         try:
             os.remove(chunk_wav)
         except:
             pass
+
     if text.strip():
+        entry_text = text.strip()
+        entry_idx = len(srt_entries) + 1
+
+        # Prepend gender tag if detected
+        if args.detect_gender and gender != 'UNKNOWN':
+            entry_text = f"[{gender}] {entry_text}"
+
         srt_entries.append({
-            'idx': len(srt_entries) + 1,
+            'idx': entry_idx,
             'start': start_ms,
             'end': end_ms,
-            'text': text.strip()
+            'text': entry_text,
+            'gender': gender
         })
+
+        # Emit gender info for server to parse
+        if args.detect_gender:
+            print(f"GENDER: {entry_idx}:{gender}")
+            sys.stdout.flush()
+
     progress_pct = int(((idx + 1) / num_chunks) * 100)
     print(f"PROGRESS: {progress_pct}%")
     sys.stdout.flush()
@@ -125,6 +184,14 @@ def write_srt(entries, path):
         f.write("\n".join(lines))
 
 write_srt(srt_entries, args.output_srt)
+
+# Print gender summary if detection was enabled
+if args.detect_gender:
+    male_count = sum(1 for e in srt_entries if e.get('gender') == 'MALE')
+    female_count = sum(1 for e in srt_entries if e.get('gender') == 'FEMALE')
+    unknown_count = sum(1 for e in srt_entries if e.get('gender') == 'UNKNOWN')
+    print(f"GENDER_SUMMARY: MALE={male_count},FEMALE={female_count},UNKNOWN={unknown_count}")
+    sys.stdout.flush()
 
 # Cleanup
 if os.path.exists(temp_wav):

@@ -1818,6 +1818,204 @@ body {
   left: 0 !important;
   top: 0 !important;
 }
+/* =====================================================
+   GENDER DETECTION TOGGLE  (Subtitle Studio)
+===================================================== */
 
+.gender-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+  margin-bottom: 0.3rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(168,85,247,0.06);
+  border: 1px solid rgba(168,85,247,0.18);
+  border-radius: 8px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.gender-toggle-row:hover {
+  background: rgba(168,85,247,0.1);
+  border-color: rgba(168,85,247,0.3);
+}
+.gender-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  flex: 1;
+}
+.gender-toggle-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.gender-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gender-toggle-text strong {
+  font-size: 0.75rem;
+  color: #e2e8f0;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.gender-toggle-hint {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.38);
+  font-family: inherit;
+}
 
+/* Toggle Switch */
+.toggle-switch-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.toggle-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-switch-slider {
+  display: block;
+  width: 40px;
+  height: 22px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.25s, border-color 0.25s;
+}
+.toggle-switch-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 50%;
+  transition: transform 0.25s, background 0.25s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.toggle-switch-input:checked + .toggle-switch-slider {
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  border-color: rgba(168,85,247,0.6);
+  box-shadow: 0 0 10px rgba(168,85,247,0.4);
+}
+.toggle-switch-input:checked + .toggle-switch-slider::after {
+  transform: translateX(18px);
+  background: #ffffff;
+}
+
+/* Gender Badge Chips */
+.gender-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+.gender-badge.male {
+  background: rgba(59,130,246,0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(59,130,246,0.35);
+}
+.gender-badge.female {
+  background: rgba(236,72,153,0.15);
+  color: #f472b6;
+  border: 1px solid rgba(236,72,153,0.32);
+}
+.gender-badge.unknown {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* Gender Summary Card */
+.gender-summary-card {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  background: rgba(99,102,241,0.07);
+  border: 1px solid rgba(99,102,241,0.2);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+.gender-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+}
+.gender-stat-icon { font-size: 0.9rem; }
+.gender-stat-count {
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: #e2e8f0;
+}
+.gender-stat-label { color: rgba(255,255,255,0.45); }
+
+/* =====================================================
+   TTS ENGINE SELECTOR  (Subtitle Studio Step 05)
+===================================================== */
+
+.tts-engine-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.tts-engine-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0.65rem 0.5rem;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.tts-engine-btn:hover {
+  background: rgba(168,85,247,0.1);
+  border-color: rgba(168,85,247,0.35);
+}
+.tts-engine-btn.active {
+  background: rgba(168,85,247,0.15);
+  border-color: rgba(168,85,247,0.55);
+  box-shadow: 0 0 14px rgba(168,85,247,0.2), inset 0 0 10px rgba(168,85,247,0.05);
+}
+.tts-engine-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.tts-engine-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.03em;
+}
+.tts-engine-sub {
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.35);
+  text-align: center;
+  line-height: 1.3;
+}
+.tts-engine-btn.active .tts-engine-name {
+  color: #c084fc;
+}
+.tts-engine-btn.active .tts-engine-sub {
+  color: rgba(192,132,252,0.6);
+}
 

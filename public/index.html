@@ -41,6 +41,10 @@
         <span class="tab-icon">💬</span> Subtitle Studio
         <span class="tab-badge">Auto</span>
       </button>
+      <button class="app-tab" id="tabTrimStudio" data-tab="trimStudio">
+        <span class="tab-icon">✂️</span> Trim Studio
+        <span class="tab-badge">Orig Res</span>
+      </button>
     </nav>
 
     <!-- Tab Panel: Batch Generator -->
@@ -964,6 +968,22 @@
                 <option value="nl-NL">Dutch (nl-NL)</option>
               </select>
             </div>
+
+            <!-- Gender Detection Toggle -->
+            <div class="gender-toggle-row">
+              <label class="gender-toggle-label" for="subDetectGender">
+                <span class="gender-toggle-icon">🎙️</span>
+                <span class="gender-toggle-text">
+                  <strong>Detect Speaker Gender</strong>
+                  <span class="gender-toggle-hint">Tags each line [MALE] or [FEMALE] using pitch analysis</span>
+                </span>
+              </label>
+              <div class="toggle-switch-wrap">
+                <input type="checkbox" id="subDetectGender" class="toggle-switch-input">
+                <label for="subDetectGender" class="toggle-switch-slider"></label>
+              </div>
+            </div>
+
             <button id="subBtnGenerate" class="glow-btn generate-btn" style="width:100%;margin-top:1rem;">
               STEP 1 - TRANSCRIBE AUDIO TO SRT
             </button>
@@ -1030,7 +1050,79 @@
               STEP 3 - BURN SUBTITLES INTO VIDEO
             </button>
           </div>
+
+          <!-- STEP 05: SRT TO AUDIO (TTS) -->
+          <div id="subTtsSection" class="config-section disabled-state" style="margin-top:1.2rem;">
+            <div class="panel-header"><span class="step-num">05</span><h2>SRT &rarr; AUDIO (TTS)</h2></div>
+            <p class="cyber-dim" style="font-size:0.72rem;margin-bottom:0.8rem;">Convert your SRT subtitle file into a narrated audio MP3 using Text-to-Speech.</p>
+
+            <!-- TTS Engine -->
+            <div class="input-group" style="margin-bottom:0.7rem;">
+              <label class="neon-label" style="font-size:0.65rem;margin-bottom:0.4rem;">TTS ENGINE</label>
+              <div class="tts-engine-selector">
+                <button class="tts-engine-btn" id="ttsEngineOffline" data-engine="offline">
+                  <span class="tts-engine-icon">🖥️</span>
+                  <span class="tts-engine-name">Offline</span>
+                  <span class="tts-engine-sub">System voice · No internet</span>
+                </button>
+                <button class="tts-engine-btn active" id="ttsEngineOnline" data-engine="online">
+                  <span class="tts-engine-icon">🌐</span>
+                  <span class="tts-engine-name">Online</span>
+                  <span class="tts-engine-sub">Google TTS · Best quality</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Speed Slider -->
+            <div class="input-group" style="margin-bottom:0.7rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                <label class="neon-label" style="font-size:0.65rem;">🎚️ SPEECH SPEED</label>
+                <span id="ttsSpeedVal" style="color:var(--accent-cyan);font-size:0.65rem;font-family:'JetBrains Mono',monospace;font-weight:bold;">1.0×</span>
+              </div>
+              <input type="range" id="ttsSpeedSlider" min="0.5" max="2.0" step="0.05" value="1.0" class="crop-slider" style="width:100%;">
+              <div style="display:flex;justify-content:space-between;margin-top:0.2rem;font-size:0.55rem;color:rgba(255,255,255,0.3);">
+                <span>0.5× Slow</span><span>1.0× Normal</span><span>2.0× Fast</span>
+              </div>
+            </div>
+
+            <!-- SRT Source Selector -->
+            <div class="input-group" style="margin-bottom:0.7rem;">
+              <label class="neon-label" style="font-size:0.65rem;margin-bottom:0.4rem;">SOURCE SRT</label>
+              <div class="tts-engine-selector">
+                <button class="tts-engine-btn active" id="ttsSrcOriginal" data-src="original">
+                  <span class="tts-engine-icon">📄</span>
+                  <span class="tts-engine-name">Original</span>
+                  <span class="tts-engine-sub">Transcribed SRT</span>
+                </button>
+                <button class="tts-engine-btn" id="ttsSrcTranslated" data-src="translated">
+                  <span class="tts-engine-icon">🌐</span>
+                  <span class="tts-engine-name">Translated</span>
+                  <span class="tts-engine-sub">Translated SRT</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Generate Button -->
+            <button id="subBtnTtsGenerate" class="glow-btn generate-btn" style="width:100%;background:linear-gradient(135deg,rgba(168,85,247,0.3),rgba(6,182,212,0.2));border-color:rgba(168,85,247,0.55);">
+              🔊 GENERATE AUDIO FROM SRT
+            </button>
+
+            <!-- TTS Progress -->
+            <div id="subTtsProgress" class="hidden" style="margin-top:0.8rem;">
+              <div class="progress-track" style="margin-bottom:0.4rem;"><div id="subTtsProgressFill" class="progress-fill" style="width:0%"></div></div>
+              <p id="subTtsStatusText" class="cyber-dim" style="font-size:0.72rem;">Initializing TTS...</p>
+            </div>
+
+            <!-- TTS Result -->
+            <div id="subTtsResult" class="hidden" style="margin-top:0.8rem;padding:0.8rem;background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.25);border-radius:8px;">
+              <p class="neon-label" style="color:#a855f7;margin-bottom:0.5rem;font-size:0.72rem;">✅ Audio Generated!</p>
+              <audio id="subTtsAudioPlayer" controls style="width:100%;margin-bottom:0.5rem;border-radius:6px;"></audio>
+              <a id="subTtsBtnDownload" href="#" download class="glow-btn" style="display:block;text-align:center;font-size:0.72rem;background:rgba(168,85,247,0.15);border-color:rgba(168,85,247,0.4);color:#c084fc;">⬇ DOWNLOAD MP3</a>
+            </div>
+          </div>
+
         </section>
+
 
         <section class="results-panel glass-card">
           <div class="panel-header"><span class="step-num">X</span><h2>SUBTITLE STUDIO HUB</h2></div>
@@ -1054,8 +1146,11 @@
               <a id="subBtnDownloadSrt" href="#" download class="proposed-btn preview-btn" style="text-decoration:none;background:rgba(34,197,94,0.12);color:#22c55e;border-color:rgba(34,197,94,0.3);font-size:0.65rem;white-space:nowrap;">Download SRT</a>
             </div>
             <div class="input-group">
-              <label class="neon-label" style="font-size:0.62rem;">ORIGINAL SRT PREVIEW</label>
-              <textarea id="subSrtPreviewText" readonly style="width:100%;height:110px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-secondary);font-family:monospace;font-size:0.68rem;padding:0.5rem;resize:none;"></textarea>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                <label class="neon-label" style="font-size:0.62rem;margin:0;">✍️ ORIGINAL SRT PREVIEW (EDITABLE)</label>
+                <button id="subBtnSaveSrt" class="proposed-btn" style="padding:0.25rem 0.55rem;font-size:0.6rem;background:rgba(34,197,94,0.15);color:#22c55e;border-color:rgba(34,197,94,0.35);">💾 Save Changes</button>
+              </div>
+              <textarea id="subSrtPreviewText" style="width:100%;height:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-secondary);font-family:monospace;font-size:0.68rem;padding:0.5rem;resize:vertical;"></textarea>
             </div>
           </div>
 
@@ -1071,11 +1166,28 @@
                 <span style="font-size:0.65rem;color:rgba(255,255,255,0.4);">TRANSLATION COMPLETE</span>
                 <strong id="subTranslatedLangLabel" style="color:#a855f7;font-size:0.78rem;">-</strong>
               </div>
-              <a id="subBtnDownloadTranslatedSrt" href="#" download class="proposed-btn preview-btn" style="text-decoration:none;background:rgba(168,85,247,0.15);color:var(--accent-purple);border-color:rgba(168,85,247,0.3);font-size:0.65rem;white-space:nowrap;">Download SRT</a>
+              <div style="display:flex;flex-direction:column;gap:0.35rem;align-items:flex-end;">
+                <a id="subBtnDownloadTranslatedSrt" href="#" download class="proposed-btn preview-btn" style="text-decoration:none;background:rgba(168,85,247,0.15);color:var(--accent-purple);border-color:rgba(168,85,247,0.3);font-size:0.65rem;white-space:nowrap;">⬇ Download SRT</a>
+                <button id="subBtnTranslatedAudio" class="proposed-btn" style="background:rgba(16,185,129,0.15);color:#10b981;border-color:rgba(16,185,129,0.35);font-size:0.65rem;white-space:nowrap;">🔊 Generate Audio</button>
+              </div>
             </div>
             <div class="input-group">
-              <label class="neon-label" style="font-size:0.62rem;">TRANSLATED SRT PREVIEW</label>
-              <textarea id="subTranslatedSrtPreview" readonly style="width:100%;height:90px;background:rgba(0,0,0,0.3);border:1px solid rgba(168,85,247,0.15);border-radius:6px;color:var(--text-secondary);font-family:monospace;font-size:0.68rem;padding:0.5rem;resize:none;"></textarea>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                <label class="neon-label" style="font-size:0.62rem;margin:0;">✍️ TRANSLATED SRT PREVIEW (EDITABLE)</label>
+                <button id="subBtnSaveTranslatedSrt" class="proposed-btn" style="padding:0.25rem 0.55rem;font-size:0.6rem;background:rgba(168,85,247,0.15);color:#c084fc;border-color:rgba(168,85,247,0.35);">💾 Save Changes</button>
+              </div>
+              <textarea id="subTranslatedSrtPreview" style="width:100%;height:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(168,85,247,0.15);border-radius:6px;color:var(--text-secondary);font-family:monospace;font-size:0.68rem;padding:0.5rem;resize:vertical;"></textarea>
+            </div>
+            <!-- Translated Audio Quick Result -->
+            <div id="subTranslatedAudioResult" class="hidden" style="padding:0.7rem;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25);border-radius:8px;">
+              <p class="neon-label" style="color:#10b981;margin-bottom:0.4rem;font-size:0.68rem;">✅ Translated Audio Ready!</p>
+              <audio id="subTranslatedAudioPlayer" controls style="width:100%;margin-bottom:0.4rem;border-radius:6px;"></audio>
+              <a id="subTranslatedAudioDownload" href="#" download class="glow-btn" style="display:block;text-align:center;font-size:0.68rem;background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.35);color:#10b981;">⬇ DOWNLOAD MP3</a>
+            </div>
+            <!-- Translated Audio Progress -->
+            <div id="subTranslatedAudioProgress" class="hidden">
+              <div class="progress-track" style="margin-bottom:0.3rem;"><div id="subTranslatedAudioFill" class="progress-fill" style="width:0%;background:linear-gradient(90deg,#10b981,#06b6d4);"></div></div>
+              <p id="subTranslatedAudioStatus" class="cyber-dim" style="font-size:0.68rem;">Generating audio...</p>
             </div>
           </div>
 
@@ -1097,6 +1209,273 @@
         </section>
       </main>
     </div>
+
+    <!-- ══ TAB PANEL: TRIM STUDIO ═══════════════════════════════════════════ -->
+    <div class="tab-panel hidden" id="panelTrimStudio">
+      <style>
+        .trim-studio-layout-v2 {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          padding: 1.2rem;
+          height: calc(100vh - 120px);
+          min-height: 600px;
+          overflow-y: auto;
+        }
+        .trim-source-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1.5rem;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          padding: 1rem 1.2rem;
+          border-radius: 8px;
+          align-items: stretch;
+        }
+        .trim-player-panel {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          background: #06080d;
+          border-radius: 8px;
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          position: relative;
+          height: 100%;
+        }
+        .trim-timeline-scroll-container {
+          overflow-x: auto;
+          width: 100%;
+          border-radius: 8px;
+          background: rgba(0, 0, 0, 0.25);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          margin-top: 0.8rem;
+          position: relative;
+        }
+        .trim-timeline-scroll-container::-webkit-scrollbar {
+          height: 8px;
+        }
+        .trim-timeline-scroll-container::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 4px;
+        }
+        .trim-timeline-scroll-container::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .trim-fullscreen-active #panelTrimStudio {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          z-index: 99999;
+          background: #070913;
+          padding: 1.5rem;
+        }
+        .trim-fullscreen-active #panelTrimStudio .trim-studio-layout-v2 {
+          height: 100%;
+        }
+        .trim-fullscreen-active #trimPlayerWrapper {
+          height: calc(100vh - 350px) !important;
+        }
+      </style>
+      
+      <div class="trim-studio-layout-v2">
+        
+        <!-- ROW 1: Source Selector & Export Settings (Top) -->
+        <div class="trim-source-row">
+          <!-- Column 1: Source Video -->
+          <div style="display:flex; flex-direction:column; gap:0.4rem; flex: 1.5; min-width: 380px;">
+            <div class="panel-header" style="margin-bottom:0.2rem;">
+              <span class="step-num">01</span>
+              <h2 style="margin:0;">SOURCE VIDEO</h2>
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="neon-label">Video File Path</label>
+              <div class="path-input-wrapper">
+                <input type="text" id="trimFilePath" placeholder="Click BROWSE or paste path…" autocomplete="off">
+                <button id="trimBtnBrowse" class="glow-btn browse-btn">BROWSE</button>
+                <button id="trimBtnLoad" class="glow-btn" style="margin-left: 0.5rem; white-space: nowrap;">▶ LOAD VIDEO</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Column 2: Metadata card -->
+          <div id="trimVideoMeta" class="probe-result-card hidden" style="margin-top:0; display:flex; align-items:center; flex: 1; min-width: 250px;">
+            <div class="meta-grid" style="width:100%;">
+              <div class="meta-item"><span class="label">FILE</span><span id="trimMetaFile" class="value">-</span></div>
+              <div class="meta-item"><span class="label">DURATION</span><span id="trimMetaDur" class="value">-</span></div>
+              <div class="meta-item"><span class="label">RESOLUTION</span><span id="trimMetaRes" class="value">-</span></div>
+            </div>
+          </div>
+
+          <!-- Column 3: Export Settings -->
+          <div style="display:flex; flex-direction:column; gap:0.4rem; border-left:1px solid rgba(255,255,255,0.08); padding-left:1.2rem; flex: 1.2; min-width: 300px; justify-content: space-between;">
+            <div class="panel-header" style="margin-bottom:0.2rem;">
+              <span class="step-num">02</span>
+              <h2 style="margin:0;">EXPORT SETTINGS</h2>
+            </div>
+            <div style="display:flex; gap:0.8rem; align-items:flex-end;">
+              <div class="input-group" style="margin-bottom:0; flex:1;">
+                <label class="neon-label">Format</label>
+                <select class="glow-select" id="trimFormatSelect" style="width:100%; height:36px; padding:0 0.5rem;">
+                  <option value="mp4">MP4 (H.264 + AAC)</option>
+                  <option value="webm">WebM (VP9 + Opus)</option>
+                </select>
+              </div>
+              <button id="trimBtnExport" class="glow-btn generate-btn" style="margin-bottom:0; height:36px; padding:0 1rem; background:linear-gradient(135deg,rgba(6,182,212,0.3),rgba(16,185,129,0.2)); border-color:rgba(6,182,212,0.55); white-space:nowrap;" disabled>
+                ✂️ Trim & Export
+              </button>
+            </div>
+
+            <!-- Render progress -->
+            <div id="trimRenderStatus" class="hidden" style="margin-top:0.4rem;">
+              <div class="progress-track" style="margin-bottom:0.2rem; height:4px;"><div id="trimProgressFill" class="progress-fill" style="width:0%"></div></div>
+              <span id="trimStatusText" class="cyber-dim" style="font-size:0.65rem;">Rendering…</span>
+            </div>
+
+            <!-- Completed result card -->
+            <div id="trimResultCard" class="hidden glass-card" style="margin-top:0.4rem; padding:0.4rem 0.6rem; background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.25); display:flex; align-items:center; justify-content:space-between; gap:10px;">
+              <span class="neon-label" style="color:#22c55e; margin-bottom:0; font-size:0.65rem;">✅ Success!</span>
+              <a id="trimResultLink" href="#" target="_blank" class="glow-btn" style="padding:0.2rem 0.6rem; font-size:0.65rem; background:rgba(34,197,94,0.15); border-color:rgba(34,197,94,0.4); color:#22c55e;">▶ OPEN</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- ROW 2: Preview Player (Full Width) -->
+        <div class="trim-player-panel" style="height: 480px; min-height: 400px; width: 100%;">
+          <div class="crop-canvas-header" style="position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.5); padding:0.5rem 1rem; z-index:10;">
+            <span class="neon-label">🎬 PREVIEW PLAYER (ORIGINAL RESOLUTION)</span>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <span id="trimCanvasInfo" class="cyber-dim" style="font-size:0.65rem;">Load a video to begin trimming</span>
+              <button id="trimBtnFullscreen" class="proposed-btn preview-btn" style="font-size:0.65rem; padding:0.25rem 0.55rem; background:rgba(6,182,212,0.15); color:var(--accent-cyan); border-color:rgba(6,182,212,0.35);">⛶ Fullscreen</button>
+            </div>
+          </div>
+          <div class="crop-canvas-wrapper" id="trimPlayerWrapper" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding-top:40px;">
+            <video id="trimPreviewPlayer" style="max-width:100%; max-height:100%; object-fit:contain; display:none;"></video>
+            <div class="crop-canvas-empty" id="trimPlayerEmpty">
+              <div class="empty-icon">📹</div>
+              <p>Load a video to start trimming</p>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- ROW 3: Timeline & Controls -->
+        <div class="filmstrip-section" id="trimFilmstripSection" style="display:none;">
+          
+          <div class="trim-timeline-scroll-container">
+            <div id="trimTimelineZoomWrapper" style="width:100%; position:relative;">
+              <!-- Time Ruler -->
+              <div class="fs-ruler" id="trimFsRuler" style="width:100%;"></div>
+
+              <!-- Filmstrip + Clip Selection Overlay -->
+              <div class="fs-track-outer" id="trimFsTrackOuter" style="width:100%;">
+                <!-- Actual frame thumbnail strip -->
+                <div class="fs-frames" id="trimFsFrames" style="width:100%;">
+                  <div class="fs-loading" id="trimFsLoading">
+                    <div class="fs-loading-bar"></div>
+                    <span>Generating filmstrip…</span>
+                  </div>
+                </div>
+
+                <!-- Hover Preview Tooltip -->
+                <div class="fs-hover-preview" id="trimFsHoverPreview">
+                  <img id="trimFsHoverPreviewImg" src="" alt="">
+                  <div class="fs-hover-time" id="trimFsHoverTime">00:00.00</div>
+                </div>
+
+                <!-- Dark overlays -->
+                <div class="fs-mask fs-mask-left" id="trimFsMaskLeft"></div>
+                <div class="fs-mask fs-mask-right" id="trimFsMaskRight"></div>
+
+                <!-- Clip selection box -->
+                <div class="fs-selection" id="trimFsSelection">
+                  <!-- Left handle -->
+                  <div class="fs-handle fs-handle-left" id="trimFsHandleLeft" title="Drag to set In Point">
+                    <div class="fs-handle-icon">&#8214;</div>
+                    <div class="fs-handle-tooltip" id="trimFsTooltipLeft">00:00.0</div>
+                  </div>
+                  <!-- Right handle -->
+                  <div class="fs-handle fs-handle-right" id="trimFsHandleRight" title="Drag to set Out Point">
+                    <div class="fs-handle-icon">&#8214;</div>
+                    <div class="fs-handle-tooltip" id="trimFsTooltipRight">00:30.0</div>
+                  </div>
+                  <div class="fs-sel-border-top"></div>
+                  <div class="fs-sel-border-bottom"></div>
+                </div>
+
+                <!-- Red Playhead -->
+                <div class="fs-playhead" id="trimFsPlayhead">
+                  <div class="fs-playhead-head"></div>
+                  <div class="fs-playhead-time" id="trimFsPlayheadTime">00:00.0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls Row -->
+          <div class="fs-controls-row" style="margin-top:0.8rem;">
+            <!-- Left: Play/Pause -->
+            <div class="fs-controls-left">
+              <button class="glow-btn" id="trimBtnPlayPause" style="min-width:90px;">▶ Play</button>
+            </div>
+            
+            <!-- Center: IN / OUT controls + Capture Buttons + Trim Button -->
+            <div class="fs-controls-center" style="gap:1rem; flex:1; justify-content:center; flex-wrap:wrap;">
+              
+              <!-- Start Time (IN) -->
+              <div style="display:flex; align-items:center; gap:0.3rem;">
+                <div class="fs-time-box">
+                  <span class="fs-time-label">IN</span>
+                  <input type="text" class="fs-time-input" id="trimTimeIn" value="00:00.0" style="width:75px;" title="Click to edit start time">
+                </div>
+                <button class="glow-btn" id="trimBtnSetIn" style="padding:0.25rem 0.5rem; font-size:0.68rem; height:32px; background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.15);" title="Set IN to current playhead position">📍 Set In</button>
+              </div>
+
+              <span class="fs-arrow">→</span>
+
+              <!-- End Time (OUT) -->
+              <div style="display:flex; align-items:center; gap:0.3rem;">
+                <div class="fs-time-box">
+                  <span class="fs-time-label">OUT</span>
+                  <input type="text" class="fs-time-input" id="trimTimeOut" value="00:30.0" style="width:75px;" title="Click to edit end time">
+                </div>
+                <button class="glow-btn" id="trimBtnSetOut" style="padding:0.25rem 0.5rem; font-size:0.68rem; height:32px; background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.15);" title="Set OUT to current playhead position">📍 Set Out</button>
+              </div>
+
+              <!-- Duration Badge -->
+              <div class="fs-duration-badge" id="trimDurationBadge" style="margin-right: 0.5rem;">30.0s</div>
+              
+              <!-- Direct Trim Button next to inputs -->
+              <button class="glow-btn generate-btn" id="trimBtnQuickExport" style="padding:0.4rem 1.2rem; background:linear-gradient(135deg,rgba(6,182,212,0.35),rgba(16,185,129,0.25)); border-color:rgba(6,182,212,0.6); font-size:0.75rem; font-weight:700; height:32px; display:flex; align-items:center; gap:4px;" disabled>
+                ✂️ Trim Selection
+              </button>
+            </div>
+
+            <!-- Right: Zoom controls -->
+            <div class="fs-controls-right" style="display:flex; align-items:center; gap:0.5rem;">
+              <span class="fs-preset-label" style="font-size: 0.65rem;">🔍 Timeline Zoom:</span>
+              <button class="fs-preset-btn active" id="trimZoom1" data-zoom="1">1x (Fit)</button>
+              <button class="fs-preset-btn" id="trimZoom5" data-zoom="5">5x</button>
+              <button class="fs-preset-btn" id="trimZoom20" data-zoom="20">20x</button>
+              <button class="fs-preset-btn" id="trimZoom50" data-zoom="50">50x</button>
+            </div>
+          </div>
+
+          <!-- Keyboard Cheatsheet -->
+          <div class="fs-cheatsheet" style="display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-top: 1rem; padding: 0.5rem 0.8rem; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.06); border-radius: 6px; font-size: 0.68rem; color: rgba(255,255,255,0.45); flex-wrap: wrap;">
+            <span>💡 <strong>Quick Scrub:</strong> Click & Drag Time Ruler to scrub video.</span>
+            <span style="color: rgba(255,255,255,0.15);">|</span>
+            <span>⌨ <strong>Shortcuts:</strong> <kbd style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); color: #fff;">Space</kbd> Play/Pause</span>
+            <span><kbd style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); color: #fff;">I</kbd> Set In</span>
+            <span><kbd style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); color: #fff;">O</kbd> Set Out</span>
+          </div>
+        </div><!-- /trimFilmstripSection -->
+      </div>
+    </div>
+
 
     <!-- Footer Slogan -->
     <footer class="app-footer" style="text-align: center; margin-top: 2.5rem; padding: 1.5rem 0 1rem; border-top: 1px solid rgba(255,255,255,0.05); font-family: var(--font-display); font-size: 0.8rem; font-weight: 600; letter-spacing: 4px; color: var(--text-secondary); text-transform: uppercase;">

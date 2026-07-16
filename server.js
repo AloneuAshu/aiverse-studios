@@ -242,7 +242,12 @@ function generateNonOverlappingClips(videoDuration, numClips, clipDuration = 5) 
 // API: NATIVE FILE BROWSE
 // -----------------------------------------------------------------------------
 
+let isBrowsing = false;
 app.post('/api/browse', (req, res) => {
+  if (isBrowsing) {
+    return res.status(409).json({ error: 'A file dialog is already open. Please close it first.' });
+  }
+  isBrowsing = true;
   console.log('[BROWSE] Opening file dialog...');
   const scriptPath = path.join(__dirname, 'browse.ps1');
   const ps = spawn('powershell.exe', ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', scriptPath]);
@@ -250,6 +255,7 @@ app.post('/api/browse', (req, res) => {
   ps.stdout.on('data', d => { stdout += d.toString(); });
   ps.stderr.on('data', d => { stderr += d.toString(); });
   ps.on('close', code => {
+    isBrowsing = false;
     console.log(`[BROWSE] PowerShell closed with code ${code}`);
     if (code === 0) {
       console.log(`[BROWSE] Selected: ${stdout.trim()}`);
@@ -259,13 +265,23 @@ app.post('/api/browse', (req, res) => {
       res.status(500).json({ error: `Browse failed: ${stderr}` });
     }
   });
+  ps.on('error', err => {
+    isBrowsing = false;
+    console.error('[BROWSE] Spawn error:', err);
+    res.status(500).json({ error: 'Failed to open file dialog' });
+  });
 });
 
 // -----------------------------------------------------------------------------
 // API: NATIVE FOLDER BROWSE (for template folder)
 // -----------------------------------------------------------------------------
 
+let isBrowsingFolder = false;
 app.post('/api/browse-folder', (req, res) => {
+  if (isBrowsingFolder) {
+    return res.status(409).json({ error: 'A folder dialog is already open. Please close it first.' });
+  }
+  isBrowsingFolder = true;
   console.log('[BROWSE-FOLDER] Opening folder dialog...');
   const scriptPath = path.join(__dirname, 'browse-folder.ps1');
   const ps = spawn('powershell.exe', ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', scriptPath]);
@@ -273,6 +289,7 @@ app.post('/api/browse-folder', (req, res) => {
   ps.stdout.on('data', d => { stdout += d.toString(); });
   ps.stderr.on('data', d => { stderr += d.toString(); });
   ps.on('close', code => {
+    isBrowsingFolder = false;
     console.log(`[BROWSE-FOLDER] PowerShell closed with code ${code}`);
     if (code === 0) {
       console.log(`[BROWSE-FOLDER] Selected: ${stdout.trim()}`);
@@ -281,6 +298,11 @@ app.post('/api/browse-folder', (req, res) => {
       console.error(`[BROWSE-FOLDER] Error details: ${stderr}`);
       res.status(500).json({ error: `Folder browse failed: ${stderr}` });
     }
+  });
+  ps.on('error', err => {
+    isBrowsingFolder = false;
+    console.error('[BROWSE-FOLDER] Spawn error:', err);
+    res.status(500).json({ error: 'Failed to open folder dialog' });
   });
 });
 
@@ -828,7 +850,7 @@ app.get('/api/list-shorts', (req, res) => {
 
 // API: SUBTITLE GENERATOR
 app.post('/api/subtitle-generate', (req, res) => {
-  const { filePath, langCode = 'en-US' } = req.body;
+  const { filePath, langCode = 'en-US', detectGender = false } = req.body;
   if (!filePath) return res.status(400).json({ error: 'filePath required' });
 
   const absPath = path.resolve(filePath);
@@ -843,6 +865,9 @@ app.post('/api/subtitle-generate', (req, res) => {
     status: 'transcribing',
     progress: 0,
     srtPath: `/shorts/${srtName}`,
+    detectGender: !!detectGender,
+    genderSegments: [],
+    genderSummary: null,
     error: null
   };
 
@@ -852,26 +877,52 @@ app.post('/api/subtitle-generate', (req, res) => {
   (async () => {
     try {
       const scriptPath = path.join(__dirname, 'transcribe.py');
-      const py = spawn('python', [
+      const pyArgs = [
         scriptPath,
         '--input', absPath,
         '--lang', langCode,
         '--output_srt', srtPath
-      ]);
+      ];
+      if (detectGender) pyArgs.push('--detect_gender');
+
+      const py = spawn('python', pyArgs);
 
       py.stdout.on('data', data => {
-        const line = data.toString().trim();
-        console.log(`[SUBTITLE] PyOut: ${line}`);
-        
-        const match = line.match(/PROGRESS:\s*(\d+)%/);
-        if (match) {
-          activeBatches[uniqueId].progress = parseInt(match[1]);
-        }
-        
-        const langMatch = line.match(/Detected language:\s*([\w-]+)/);
-        if (langMatch) {
-          activeBatches[uniqueId].detectedLanguage = langMatch[1];
-        }
+        const lines = data.toString().split('\n');
+        lines.forEach(line => {
+          line = line.trim();
+          if (!line) return;
+          console.log(`[SUBTITLE] PyOut: ${line}`);
+
+          const progressMatch = line.match(/PROGRESS:\s*(\d+)%/);
+          if (progressMatch) {
+            activeBatches[uniqueId].progress = parseInt(progressMatch[1]);
+          }
+
+          const langMatch = line.match(/Detected language:\s*([\w-]+)/);
+          if (langMatch) {
+            activeBatches[uniqueId].detectedLanguage = langMatch[1];
+          }
+
+          // Parse per-segment gender: "GENDER: <idx>:<MALE|FEMALE|UNKNOWN>"
+          const genderMatch = line.match(/^GENDER:\s*(\d+):(MALE|FEMALE|UNKNOWN)/);
+          if (genderMatch) {
+            activeBatches[uniqueId].genderSegments.push({
+              idx: parseInt(genderMatch[1]),
+              gender: genderMatch[2]
+            });
+          }
+
+          // Parse summary: "GENDER_SUMMARY: MALE=X,FEMALE=Y,UNKNOWN=Z"
+          const summaryMatch = line.match(/^GENDER_SUMMARY:\s*MALE=(\d+),FEMALE=(\d+),UNKNOWN=(\d+)/);
+          if (summaryMatch) {
+            activeBatches[uniqueId].genderSummary = {
+              male: parseInt(summaryMatch[1]),
+              female: parseInt(summaryMatch[2]),
+              unknown: parseInt(summaryMatch[3])
+            };
+          }
+        });
       });
 
       py.stderr.on('data', data => {
@@ -893,6 +944,26 @@ app.post('/api/subtitle-generate', (req, res) => {
       activeBatches[uniqueId].error = err.message;
     }
   })();
+});
+
+// API: SUBTITLE SAVE (INLINE EDIT SAVE)
+app.post('/api/subtitle-save', (req, res) => {
+  const { srtPath, content } = req.body;
+  if (!srtPath || content === undefined) {
+    return res.status(400).json({ error: 'srtPath and content required' });
+  }
+
+  const srtFilename = path.basename(srtPath);
+  const absSrtPath = path.join(SHORTS_DIR, srtFilename);
+
+  fs.writeFile(absSrtPath, content, 'utf8', (err) => {
+    if (err) {
+      console.error(`[SAVE-SRT] Error saving file ${absSrtPath}:`, err);
+      return res.status(500).json({ error: `Failed to save file: ${err.message}` });
+    }
+    console.log(`[SAVE-SRT] Saved: ${absSrtPath}`);
+    res.json({ success: true, srtPath: `/shorts/${srtFilename}` });
+  });
 });
 
 // API: SUBTITLE TRANSLATE
@@ -1016,6 +1087,109 @@ app.post('/api/subtitle-burn', (req, res) => {
       }
     } catch (err) {
       console.error(`[BURN] Error:`, err.message);
+      activeBatches[uniqueId].status = 'failed';
+      activeBatches[uniqueId].error = err.message;
+    }
+  })();
+});
+
+// API: SRT TO AUDIO (TTS)
+app.post('/api/srt-to-audio', async (req, res) => {
+  const { srtPath, engine = 'offline', speed = 1.0, lang = 'en', videoPath } = req.body;
+  if (!srtPath) return res.status(400).json({ error: 'srtPath required' });
+
+  const srtFilename = path.basename(srtPath);
+  const absSrtPath = path.join(SHORTS_DIR, srtFilename);
+  if (!fs.existsSync(absSrtPath)) return res.status(404).json({ error: 'SRT file not found' });
+
+  // Get video duration if videoPath is provided
+  let videoDurationMs = null;
+  if (videoPath) {
+    try {
+      const absVideoPath = path.resolve(videoPath);
+      if (fs.existsSync(absVideoPath)) {
+        const probe = await probeFile(absVideoPath);
+        if (probe && probe.format && probe.format.duration) {
+          videoDurationMs = Math.round(parseFloat(probe.format.duration) * 1000);
+          console.log(`[TTS] Probed video duration: ${videoDurationMs}ms`);
+        }
+      }
+    } catch (e) {
+      console.error('[TTS] Error probing video path:', e);
+    }
+  }
+
+  const uniqueId = `tts_${Date.now()}`;
+  const audioName = `tts_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}.mp3`;
+  const audioPath = path.join(SHORTS_DIR, audioName);
+
+  activeBatches[uniqueId] = {
+    batchId: uniqueId,
+    status: 'generating_audio',
+    progress: 0,
+    audioPath: `/shorts/${audioName}`,
+    segments: null,
+    error: null
+  };
+
+  res.json({ success: true, batchId: uniqueId });
+
+  (async () => {
+    try {
+      const scriptPath = path.join(__dirname, 'srt_to_audio.py');
+      const pyArgs = [
+        scriptPath,
+        '--input', absSrtPath,
+        '--output', audioPath,
+        '--engine', engine,
+        '--speed', String(parseFloat(speed).toFixed(2)),
+        '--lang', lang
+      ];
+      if (videoDurationMs) {
+        pyArgs.push('--video_duration', String(videoDurationMs));
+      }
+
+      const py = spawn('python', pyArgs);
+
+      py.stdout.on('data', data => {
+        const lines = data.toString().split('\n');
+        lines.forEach(line => {
+          line = line.trim();
+          if (!line) return;
+          console.log(`[TTS] ${line}`);
+
+          const progressMatch = line.match(/^PROGRESS:\s*(\d+)%/);
+          if (progressMatch) {
+            activeBatches[uniqueId].progress = parseInt(progressMatch[1]);
+          }
+
+          const statusMatch = line.match(/^STATUS:\s*(.+)/);
+          if (statusMatch) {
+            activeBatches[uniqueId].statusMessage = statusMatch[1];
+          }
+
+          const segMatch = line.match(/^SEGMENTS:\s*(\d+)/);
+          if (segMatch) {
+            activeBatches[uniqueId].segments = parseInt(segMatch[1]);
+          }
+        });
+      });
+
+      py.stderr.on('data', data => {
+        console.error(`[TTS] Err: ${data.toString()}`);
+      });
+
+      py.on('close', code => {
+        if (code === 0 && fs.existsSync(audioPath)) {
+          activeBatches[uniqueId].status = 'completed';
+          activeBatches[uniqueId].progress = 100;
+          console.log(`[TTS] Completed: ${audioPath}`);
+        } else {
+          activeBatches[uniqueId].status = 'failed';
+          activeBatches[uniqueId].error = 'TTS generation failed';
+        }
+      });
+    } catch (err) {
       activeBatches[uniqueId].status = 'failed';
       activeBatches[uniqueId].error = err.message;
     }
@@ -1300,6 +1474,112 @@ async function runRenderJob({
   }
 }
 
+async function runTrimJob({
+  reqBody,
+  job,
+  batchId,
+  absPath
+}) {
+  try {
+    const {
+      filePath, startSec = 0, duration = 30,
+      format = 'mp4',
+    } = reqBody;
+
+    job.status = 'processing'; job.progress = 5;
+
+    const formatExt = format === 'webm' ? 'webm' : 'mp4';
+    const outTs   = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+    const outName = `trim_${outTs}_${Math.floor(1000 + Math.random() * 9000)}.${formatExt}`;
+    const outPath = path.join(SHORTS_DIR, outName);
+    console.log(`[TRIM] Output path: ${outPath}`);
+
+    const probe    = await probeFile(absPath);
+    const hasAudio = probe.streams.some(s => s.codec_type === 'audio');
+
+    const baseArgs = [
+      '-ss', String(parseFloat(startSec).toFixed(3)),
+      '-t',  String(parseFloat(duration).toFixed(3)),
+      '-i',  absPath,
+    ];
+
+    const isWebm = (format === 'webm');
+    const encArgs = [];
+
+    if (isWebm) {
+      encArgs.push(
+        '-c:v', 'libvpx-vp9', '-crf', '30', '-b:v', '0',
+        '-c:a', 'libopus', '-b:a', '96k',
+        '-y', outPath
+      );
+    } else {
+      encArgs.push(
+        '-pix_fmt', 'yuv420p',
+        '-c:v', 'libx264', '-preset', 'fast', '-crf', '20',
+        '-c:a', 'aac', '-ac', '2', '-ar', '44100', '-b:a', '128k',
+        '-movflags', '+faststart', '-y', outPath
+      );
+    }
+
+    let args;
+    if (hasAudio) {
+      args = [...baseArgs, ...encArgs];
+    } else {
+      if (isWebm) {
+        args = [
+          ...baseArgs,
+          '-f', 'lavfi', '-t', String(parseFloat(duration).toFixed(3)),
+          '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000',
+          '-map', '0:v:0', '-map', '1:a:0',
+          ...encArgs.slice(0, -2),
+          '-shortest', '-y', outPath
+        ];
+      } else {
+        args = [
+          ...baseArgs,
+          '-f', 'lavfi', '-t', String(parseFloat(duration).toFixed(3)),
+          '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
+          '-map', '0:v:0', '-map', '1:a:0',
+          ...encArgs.slice(0, -2),
+          '-shortest', '-y', outPath
+        ];
+      }
+    }
+
+    job.status = `Trimming video…`;
+    console.log(`[TRIM] FFmpeg args:`, args.join(' '));
+    await runFFmpegProgress(args, parseFloat(duration), pct => {
+      job.progress = 10 + Math.round((pct / 100) * 82);
+    });
+
+    if (!fs.existsSync(outPath)) {
+      throw new Error('Output file was not created');
+    }
+
+    const stats = fs.statSync(outPath);
+    if (stats.size === 0) {
+      throw new Error('Output file is empty');
+    }
+
+    // Thumbnail
+    job.status = 'Generating thumbnail…'; job.progress = 93;
+    const thumbName = `thumb_${path.basename(outName, path.extname(outName))}.jpg`;
+    const thumbPath = path.join(THUMBNAILS_DIR, thumbName);
+    await runCommand('ffmpeg', ['-ss', '0.5', '-i', outPath, '-vframes', '1', '-q:v', '2', thumbPath, '-y']).catch(() => {});
+
+    job.status = 'completed'; job.progress = 100;
+    job.outputFileName = outName;
+    job.outputPath     = `/shorts/${outName}`;
+    job.thumbnailPath  = `/thumbnails/${thumbName}`;
+    activeBatches[batchId].status = 'completed';
+    console.log(`[TRIM] Done: ${outName}`);
+  } catch (err) {
+    console.error('[TRIM] Error:', err.message);
+    job.status = 'failed'; job.error = err.message; job.progress = 100;
+    activeBatches[batchId].status = 'failed';
+  }
+}
+
 function processNextQueueJob() {
   if (renderQueue.length === 0) return;
   if (activeRendersCount >= MAX_CONCURRENT_RENDERS) return;
@@ -1310,7 +1590,8 @@ function processNextQueueJob() {
   // Set job status
   next.job.status = 'Processing in render queue...';
   
-  runRenderJob(next).finally(() => {
+  const runner = next.batchId.startsWith('trim_') ? runTrimJob(next) : runRenderJob(next);
+  runner.finally(() => {
     activeRendersCount--;
     processNextQueueJob();
   });
@@ -1353,6 +1634,40 @@ app.post('/api/crop-render', async (req, res) => {
   // Trigger processing
   processNextQueueJob();
 });
+
+app.post('/api/trim-render', async (req, res) => {
+  const {
+    filePath, startSec = 0, duration = 30,
+    format = 'mp4',
+  } = req.body;
+
+  if (!filePath) return res.status(400).json({ error: 'filePath required' });
+  if (duration <= 0) return res.status(400).json({ error: 'duration must be positive' });
+  if (startSec < 0) return res.status(400).json({ error: 'startSec must be non-negative' });
+
+  const absPath = path.resolve(filePath);
+  if (!fs.existsSync(absPath)) return res.status(404).json({ error: `File not found: ${filePath}` });
+
+  const uniqueId = `${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+  const batchId = `trim_${uniqueId}`;
+  const job = {
+    jobId: `${batchId}_job_0`, index: 0,
+    status: 'queued in background', progress: 0,
+    error: null, outputFileName: null, outputPath: null, thumbnailPath: null
+  };
+  activeBatches[batchId] = { batchId, status: 'processing', shortCount: 1, jobs: [job] };
+  res.json({ success: true, batchId });
+
+  renderQueue.push({
+    reqBody: req.body,
+    job,
+    batchId,
+    absPath
+  });
+
+  processNextQueueJob();
+});
+
 
 // Fallback
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
