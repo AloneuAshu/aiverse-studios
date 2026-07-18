@@ -389,6 +389,12 @@ export function initTrimStudio() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed to submit trim job');
       
+      // Automatically advance markers for consecutive trimming:
+      // Set the next In time to the current Out time, and next Out time to the video end.
+      ts.trimStart = ts.trimEnd;
+      ts.trimEnd = ts.duration;
+      updateTrimUI();
+      
       const poll = setInterval(async () => {
         try {
           const sr = await fetch(`/api/status/${d.batchId}`);
