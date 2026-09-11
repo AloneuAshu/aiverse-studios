@@ -3,6 +3,8 @@ import { $, toast } from './utils.js';
 // State management
 let posterState = {
   aspect: '9:16',          // '9:16' (1080x1920), '16:9' (1920x1080), '1:1' (1080x1080)
+  fitMode: 'blur',         // 'blur' (Blur Pad Fill), 'crop' (Smart 9:16 Crop), 'cover'
+  panX: 0,                 // -1 (Left) to 1 (Right) horizontal pan offset
   sourceMode: 'ai',        // 'ai', 'video', 'upload'
   images: [],              // [{ id, dataUrl, title }]
   selectedIndex: 0,
@@ -35,6 +37,7 @@ export function initPosterStudio() {
   console.log('[INIT] Poster Studio Module');
   
   setupAspectSelectors();
+  setupFramingSelectors();
   setupSourceTabs();
   setupFormListeners();
   setupButtons();
@@ -55,6 +58,32 @@ function setupAspectSelectors() {
       renderMasterPoster();
     });
   });
+}
+
+function setupFramingSelectors() {
+  const framingBtns = document.querySelectorAll('#posterFramingRow .fade-btn');
+  framingBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      framingBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      posterState.fitMode = btn.dataset.fit;
+      renderMasterPoster();
+    });
+  });
+
+  const sliderPan = $('posterPanSlider');
+  if (sliderPan) {
+    sliderPan.addEventListener('input', (e) => {
+      posterState.panX = parseFloat(e.target.value);
+      const val = $('posterPanVal');
+      if (val) {
+        if (posterState.panX === 0) val.textContent = 'Center';
+        else if (posterState.panX < 0) val.textContent = `Left ${Math.abs(Math.round(posterState.panX * 100))}%`;
+        else val.textContent = `Right ${Math.round(posterState.panX * 100)}%`;
+      }
+      renderMasterPoster();
+    });
+  }
 }
 
 function updateDimensionBadge() {
@@ -601,25 +630,73 @@ function renderMasterPoster() {
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
-    // Cover fill image on canvas
+    // Image aspect ratio framing & pan conversion engine (16:9 -> 9:16)
     const imgAspect = img.width / img.height;
     const canvasAspect = W / H;
-    let renderW = W;
-    let renderH = H;
-    let offsetX = 0;
-    let offsetY = 0;
 
-    if (imgAspect > canvasAspect) {
-      renderH = H;
-      renderW = H * imgAspect;
-      offsetX = (W - renderW) / 2;
+    if (posterState.fitMode === 'blur') {
+      // 1. Draw blurred background filling full canvas
+      ctx.save();
+      let bRenderW = W, bRenderH = H, bOffX = 0, bOffY = 0;
+      if (imgAspect > canvasAspect) {
+        bRenderH = H;
+        bRenderW = H * imgAspect;
+        bOffX = (W - bRenderW) / 2;
+      } else {
+        bRenderW = W;
+        bRenderH = W / imgAspect;
+        bOffY = (H - bRenderH) / 2;
+      }
+      ctx.filter = 'blur(24px) brightness(0.65)';
+      ctx.drawImage(img, bOffX, bOffY, bRenderW, bRenderH);
+      ctx.restore();
+
+      // 2. Draw intact fitted frame in center
+      let fitW = W, fitH = H, fitX = 0, fitY = 0;
+      if (imgAspect > canvasAspect) {
+        fitW = W;
+        fitH = W / imgAspect;
+        fitY = (H - fitH) / 2;
+      } else {
+        fitH = H;
+        fitW = H * imgAspect;
+        fitX = (W - fitW) / 2;
+      }
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 24;
+      ctx.drawImage(img, fitX, fitY, fitW, fitH);
+      ctx.restore();
+    } else if (posterState.fitMode === 'crop') {
+      // Smart 9:16 Crop with Horizontal Pan
+      if (imgAspect > canvasAspect) {
+        const cropH = img.height;
+        const cropW = cropH * canvasAspect;
+        const maxOffX = (img.width - cropW) / 2;
+        const cropX = Math.max(0, Math.min(img.width - cropW, (img.width - cropW) / 2 + (posterState.panX * maxOffX)));
+        ctx.drawImage(img, cropX, 0, cropW, cropH, 0, 0, W, H);
+      } else {
+        const cropW = img.width;
+        const cropH = cropW / canvasAspect;
+        const maxOffY = (img.height - cropH) / 2;
+        const cropY = Math.max(0, Math.min(img.height - cropH, (img.height - cropH) / 2 + (posterState.panX * maxOffY)));
+        ctx.drawImage(img, 0, cropY, cropW, cropH, 0, 0, W, H);
+      }
     } else {
-      renderW = W;
-      renderH = W / imgAspect;
-      offsetY = (H - renderH) / 2;
+      // Cover Stretch
+      let renderW = W, renderH = H, offsetX = 0, offsetY = 0;
+      if (imgAspect > canvasAspect) {
+        renderH = H;
+        renderW = H * imgAspect;
+        offsetX = (W - renderW) / 2;
+      } else {
+        renderW = W;
+        renderH = W / imgAspect;
+        offsetY = (H - renderH) / 2;
+      }
+      ctx.drawImage(img, offsetX, offsetY, renderW, renderH);
     }
-
-    ctx.drawImage(img, offsetX, offsetY, renderW, renderH);
 
     // Apply Color LUT / Grading Filter
     applyColorLUT(ctx, W, H, posterState.lut);

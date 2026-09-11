@@ -66,6 +66,33 @@
         <button id="posterBtnGenerate" class="glow-btn flex-1" style="margin-top: 1rem;">✨ GENERATE IMAGES</button>
       </div>
 
+      <!-- 16:9 -> 9:16 Video Framing & Pan Controls -->
+      <div class="input-group" style="margin-top: 0.8rem; background: rgba(6,182,212,0.04); border: 1px solid rgba(6,182,212,0.18); padding: 0.6rem 0.8rem; border-radius: 8px;">
+        <label class="neon-label" style="color:var(--accent-cyan);">16:9 → 9:16 VIDEO FRAMING & PAN</label>
+        <div class="fade-btn-row" id="posterFramingRow" style="margin-top: 0.4rem; margin-bottom: 0.6rem;">
+          <button class="fade-btn active" data-fit="blur" id="btnFitBlur">
+            <span class="fade-icon">✨</span>
+            <span class="fade-label">Blur Pad Fill</span>
+          </button>
+          <button class="fade-btn" data-fit="crop" id="btnFitCrop">
+            <span class="fade-icon">✂️</span>
+            <span class="fade-label">Smart 9:16 Crop</span>
+          </button>
+          <button class="fade-btn" data-fit="cover" id="btnFitCover">
+            <span class="fade-icon">🔍</span>
+            <span class="fade-label">Cover Stretch</span>
+          </button>
+        </div>
+
+        <div class="input-group">
+          <div class="label-row">
+            <label class="neon-label" style="font-size:0.65rem;">⟺ HORIZONTAL PAN (16:9 → 9:16)</label>
+            <span id="posterPanVal" class="neon-label" style="color:var(--accent-cyan); font-size:0.65rem;">Center</span>
+          </div>
+          <input type="range" id="posterPanSlider" min="-1" max="1" step="0.02" value="0" class="crop-slider">
+        </div>
+      </div>
+
       <!-- Random Image Selection Grid -->
       <div class="poster-gallery-container">
         <div class="label-row" style="margin-bottom: 0.4rem;">
