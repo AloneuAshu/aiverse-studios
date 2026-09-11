@@ -288,8 +288,10 @@ function setupButtons() {
   const btnBrowseVideo = $('posterBtnBrowseVideo');
   if (btnBrowseVideo) {
     btnBrowseVideo.addEventListener('click', async () => {
+      btnBrowseVideo.textContent = '…';
+      btnBrowseVideo.disabled = true;
       try {
-        const res = await fetch('/api/browse-file?type=video');
+        const res = await fetch('/api/browse', { method: 'POST' });
         const data = await res.json();
         if (data.filePath) {
           const input = $('posterVideoPath');
@@ -297,7 +299,10 @@ function setupButtons() {
           toast('Video path loaded!');
         }
       } catch (err) {
-        toast('Browse cancelled or unavailable', 'error');
+        toast(err.message || 'Browse failed or cancelled', 'error');
+      } finally {
+        btnBrowseVideo.textContent = 'BROWSE';
+        btnBrowseVideo.disabled = false;
       }
     });
   }
