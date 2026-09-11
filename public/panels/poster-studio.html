@@ -1,0 +1,251 @@
+<div class="tab-panel hidden" id="panelPosterStudio">
+  <div class="poster-studio-layout">
+
+    <!-- LEFT COLUMN: Image Generator & Typography Controls -->
+    <div class="poster-controls-col glass-card">
+
+      <!-- Aspect Ratio & Quick Action Header -->
+      <div class="panel-header">
+        <span class="step-num">01</span>
+        <h2>POSTER FORMAT & IMAGE GENERATOR</h2>
+      </div>
+
+      <!-- Aspect Ratio Picker -->
+      <div class="input-group">
+        <label class="neon-label">Aspect Ratio / Canvas Mode</label>
+        <div class="fade-btn-row" id="posterAspectRow">
+          <button class="fade-btn active" data-aspect="9:16" id="btnAspect916">
+            <span class="fade-icon">📱</span>
+            <span class="fade-label">9:16 Vertical</span>
+          </button>
+          <button class="fade-btn" data-aspect="16:9" id="btnAspect169">
+            <span class="fade-icon">🎬</span>
+            <span class="fade-label">16:9 Landscape</span>
+          </button>
+          <button class="fade-btn" data-aspect="1:1" id="btnAspect11">
+            <span class="fade-icon">🔳</span>
+            <span class="fade-label">1:1 Square</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Image Source Tabs -->
+      <div class="input-group" style="margin-top: 1rem;">
+        <label class="neon-label">Image Source Engine</label>
+        <div class="poster-source-tabs">
+          <button class="source-tab active" data-source="ai" id="tabSourceAI">🎨 AI Backdrop Generator</button>
+          <button class="source-tab" data-source="video" id="tabSourceVideo">📹 Video Frame Extractor</button>
+          <button class="source-tab" data-source="upload" id="tabSourceUpload">📁 Upload Custom</button>
+        </div>
+      </div>
+
+      <!-- Source Config: Video Path (Conditional) -->
+      <div id="posterVideoPathGroup" class="input-group hidden" style="margin-top: 0.6rem;">
+        <label class="neon-label">Video Source Path</label>
+        <div class="path-input-wrapper">
+          <input type="text" id="posterVideoPath" placeholder="Paste video path or load from Crop/Batch…" autocomplete="off">
+          <button id="posterBtnBrowseVideo" class="glow-btn browse-btn">BROWSE</button>
+        </div>
+      </div>
+
+      <!-- Source Config: Upload File (Conditional) -->
+      <div id="posterUploadGroup" class="input-group hidden" style="margin-top: 0.6rem;">
+        <label class="neon-label">Custom Image File</label>
+        <input type="file" id="posterFileInput" accept="image/*" class="file-input-custom">
+      </div>
+
+      <!-- Image Count & Generate Row -->
+      <div class="poster-gen-bar">
+        <div class="input-group flex-1">
+          <div class="label-row">
+            <label class="neon-label">Image Count</label>
+            <span id="posterImgCountVal" class="neon-label" style="color:var(--accent-cyan);">6 Images</span>
+          </div>
+          <input type="range" id="posterImgCountSlider" min="3" max="12" step="1" value="6" class="crop-slider">
+        </div>
+        <button id="posterBtnGenerate" class="glow-btn flex-1" style="margin-top: 1rem;">✨ GENERATE IMAGES</button>
+      </div>
+
+      <!-- Random Image Selection Grid -->
+      <div class="poster-gallery-container">
+        <div class="label-row" style="margin-bottom: 0.4rem;">
+          <label class="neon-label">SELECT POSTER BACKGROUND IMAGE</label>
+          <span id="posterSelectedBadge" class="cyber-dim" style="font-size:0.68rem; color:var(--accent-amber);">Image #1 Selected</span>
+        </div>
+        <div id="posterGalleryGrid" class="poster-gallery-grid">
+          <!-- Dynamically populated images go here -->
+          <div class="poster-gallery-loading">Generating cinematic poster images…</div>
+        </div>
+      </div>
+
+      <!-- STEP 2: CINEMATIC TYPOGRAPHY & TITLE DESCRIPTION BOX -->
+      <div class="panel-header" style="margin-top:1.5rem;">
+        <span class="step-num">02</span>
+        <h2>CINEMATIC TITLE & DESCRIPTION EDITOR</h2>
+      </div>
+
+      <div class="input-group">
+        <label class="neon-label">MAIN MOVIE / SHOW TITLE</label>
+        <input type="text" id="posterMainTitle" placeholder="e.g. THE ETERNAL LEGEND" value="THE ETERNAL LEGEND" class="cinematic-input">
+      </div>
+
+      <div class="input-group" style="margin-top: 0.6rem;">
+        <label class="neon-label">TAGLINE / DESCRIPTION BOX</label>
+        <textarea id="posterTagline" rows="2" placeholder="e.g. IN A WORLD BEYOND TIME, ONLY ONE WARRIOR CAN RESTORE THE LIGHT..." class="cinematic-input">IN A WORLD BEYOND TIME, ONLY ONE WARRIOR CAN RESTORE THE LIGHT.</textarea>
+      </div>
+
+      <div class="input-group-row" style="display:flex; gap:0.6rem; margin-top:0.6rem;">
+        <div class="input-group flex-1">
+          <label class="neon-label">BILLING / CREDITS LINE</label>
+          <input type="text" id="posterCredits" placeholder="A FILM BY AIVERSE STUDIOS" value="A FILM BY AIVERSE STUDIOS • STARRING JOHN DOE" class="cinematic-input">
+        </div>
+        <div class="input-group flex-1">
+          <label class="neon-label">STUDIO / RELEASE BADGE</label>
+          <input type="text" id="posterBadge" placeholder="IN THEATERS 2026 • 4K ULTRA HD" value="EXCLUSIVE PREMIERE • 4K ULTRA HD" class="cinematic-input">
+        </div>
+      </div>
+
+      <!-- STEP 3: CINEMATIC FONTS & STYLING -->
+      <div class="panel-header" style="margin-top:1.5rem;">
+        <span class="step-num">03</span>
+        <h2>TYPOGRAPHY & CINEMATIC FX</h2>
+      </div>
+
+      <div class="input-group-row" style="display:flex; gap:0.6rem;">
+        <div class="input-group flex-1">
+          <label class="neon-label">CINEMATIC FONT</label>
+          <select id="posterFontSelect" class="cinematic-select">
+            <option value="'Cinzel Decorative', serif" selected>Cinzel Decorative (Epic / Historical)</option>
+            <option value="'Bebas Neue', sans-serif">Bebas Neue (Action / Blockbuster)</option>
+            <option value="'Montserrat', sans-serif">Montserrat (Modern Sci-Fi)</option>
+            <option value="'Playfair Display', serif">Playfair Display (Dramatic Noir)</option>
+            <option value="'Anton', sans-serif">Anton (Heavy Thriller)</option>
+            <option value="'Orbitron', sans-serif">Orbitron (Cyberpunk Synth)</option>
+            <option value="'UnifrakturCook', cursive">Unifraktur (Gothic Dark Fantasy)</option>
+            <option value="'Outfit', sans-serif">Outfit (Sleek Minimalist)</option>
+          </select>
+        </div>
+
+        <div class="input-group flex-1">
+          <label class="neon-label">COLOR & GLOW PRESET</label>
+          <select id="posterColorPreset" class="cinematic-select">
+            <option value="gold" selected>👑 Imperial Gold Gradient</option>
+            <option value="cyan">⚡ Neon Cyan Glow</option>
+            <option value="crimson">🩸 Blood Red Thriller</option>
+            <option value="silver">🛡️ Chrome Steel Silver</option>
+            <option value="fire">🔥 Blaze Orange Fire</option>
+            <option value="emerald">🧪 Emerald Matrix</option>
+            <option value="white">⚪ Crisp Pure White</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Typography Adjustment Sliders -->
+      <div class="crop-sliders" style="margin-top: 0.8rem;">
+        <div class="input-group">
+          <div class="label-row">
+            <label class="neon-label">TITLE SIZE</label>
+            <span id="posterTitleSizeVal" class="neon-label" style="color:var(--accent-cyan);">72px</span>
+          </div>
+          <input type="range" id="posterTitleSizeSlider" min="36" max="130" step="2" value="72" class="crop-slider">
+        </div>
+
+        <div class="input-group">
+          <div class="label-row">
+            <label class="neon-label">LETTER SPACING (TRACKING)</label>
+            <span id="posterTrackingVal" class="neon-label" style="color:var(--accent-cyan);">6px</span>
+          </div>
+          <input type="range" id="posterTrackingSlider" min="0" max="24" step="1" value="6" class="crop-slider">
+        </div>
+
+        <div class="input-group">
+          <div class="label-row">
+            <label class="neon-label">VERTICAL TITLE POSITION</label>
+            <span id="posterPosVal" class="neon-label" style="color:var(--accent-cyan);">Bottom 25%</span>
+          </div>
+          <input type="range" id="posterPosSlider" min="10" max="90" step="1" value="75" class="crop-slider">
+        </div>
+      </div>
+
+      <!-- Cinematic FX & Color LUT Filters -->
+      <div class="input-group" style="margin-top: 1rem;">
+        <label class="neon-label">CINEMATIC COLOR LUT & MOVIE FX</label>
+        <div class="poster-fx-grid">
+          <div class="input-group">
+            <label class="neon-label" style="font-size:0.62rem;">Color Grade Filter</label>
+            <select id="posterLUTSelect" class="cinematic-select">
+              <option value="none">Normal Color</option>
+              <option value="teal-orange" selected>Teal & Orange Hollywood</option>
+              <option value="cyberpunk">Cyberpunk Neon Night</option>
+              <option value="noir">Dramatic Film Noir B&W</option>
+              <option value="golden">Golden Hour Sunset</option>
+              <option value="cold-matrix">Cold Matrix Cyan</option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <div class="label-row">
+              <label class="neon-label" style="font-size:0.62rem;">Vignette Shadow</label>
+              <span id="posterVignetteVal" class="neon-label" style="color:var(--accent-cyan); font-size:0.6rem;">60%</span>
+            </div>
+            <input type="range" id="posterVignetteSlider" min="0" max="100" step="5" value="60" class="crop-slider">
+          </div>
+        </div>
+
+        <!-- Toggles Row -->
+        <div class="poster-toggles-row" style="margin-top:0.6rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
+          <label class="checkbox-label">
+            <input type="checkbox" id="posterCheckLetterbox" checked>
+            <span>🎬 Movie Letterbox Bars</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="posterCheckFlare" checked>
+            <span>✨ Anamorphic Lens Flare</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="posterCheckGrain" checked>
+            <span>🎞️ Film Grain Texture</span>
+          </label>
+        </div>
+      </div>
+
+    </div><!-- /poster-controls-col -->
+
+
+    <!-- RIGHT COLUMN: Master Canvas Studio Preview -->
+    <div class="poster-canvas-col glass-card">
+      <div class="poster-canvas-header">
+        <div class="poster-title-info">
+          <span class="neon-label">🎬 MASTER POSTER CANVAS</span>
+          <span id="posterDimBadge" class="cyber-dim" style="color:var(--accent-cyan);">1080 × 1920 (9:16)</span>
+        </div>
+        <div class="poster-quick-actions">
+          <button id="posterBtnSurprise" class="glow-btn mini-btn" title="Randomize Title & Styles">🎲 Surprise Me!</button>
+        </div>
+      </div>
+
+      <!-- Canvas Container Wrapper -->
+      <div class="poster-canvas-wrapper" id="posterCanvasWrapper">
+        <canvas id="posterCanvas" class="poster-canvas"></canvas>
+      </div>
+
+      <!-- Export & Save Actions Bar -->
+      <div class="poster-export-bar">
+        <button id="posterBtnDownload" class="glow-btn download-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          DOWNLOAD HD POSTER (PNG)
+        </button>
+
+        <button id="posterBtnSaveServer" class="glow-btn save-btn">
+          💾 SAVE TO PROJECT POSTERS
+        </button>
+
+        <button id="posterBtnCopy" class="glow-btn copy-btn">
+          📋 COPY TO CLIPBOARD
+        </button>
+      </div>
+
+    </div><!-- /poster-canvas-col -->
+
+  </div><!-- /poster-studio-layout -->
+</div>

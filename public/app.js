@@ -2,6 +2,7 @@ import { $ } from './modules/utils.js';
 import { initBatchGen } from './modules/batch-gen.js';
 import { initRandomGen } from './modules/random-gen.js';
 import { initCropStudio } from './modules/crop-studio.js';
+import { initPosterStudio } from './modules/poster-studio.js';
 import { initSubtitles } from './modules/subtitles.js';
 import { initTrimStudio } from './modules/trim-studio.js';
 
@@ -15,6 +16,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       { id: 'batch-gen', file: 'batch-gen.html' },
       { id: 'random-gen', file: 'random-gen.html' },
       { id: 'crop-studio', file: 'crop-studio.html' },
+      { id: 'poster-studio', file: 'poster-studio.html' },
       { id: 'subtitle-studio', file: 'subtitle-studio.html' },
       { id: 'trim-studio', file: 'trim-studio.html' }
     ];
@@ -32,6 +34,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     initBatchGen();
     initRandomGen();
     initCropStudio();
+    initPosterStudio();
     initSubtitles();
     initTrimStudio();
 
@@ -70,6 +73,7 @@ function initTabNav() {
         batchGen: 'panelBatchGen',
         randomGen: 'panelRandomGen',
         cropStudio: 'panelCropStudio',
+        posterStudio: 'panelPosterStudio',
         subtitles: 'panelSubtitles',
         trimStudio: 'panelTrimStudio'
       };

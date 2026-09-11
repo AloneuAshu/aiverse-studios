@@ -411,4 +411,30 @@ router.post('/trim-render', async (req, res) => {
   processNextQueueJob();
 });
 
+router.post('/save-poster', (req, res) => {
+  try {
+    const { dataUrl, filename } = req.body;
+    if (!dataUrl) return res.status(400).json({ error: 'dataUrl is required' });
+
+    const posterDir = path.join(__dirname, '..', 'public', 'posters');
+    if (!fs.existsSync(posterDir)) {
+      fs.mkdirSync(posterDir, { recursive: true });
+    }
+
+    const safeName = (filename || `poster_${Date.now()}.png`).replace(/[^\w.-]/g, '_');
+    const outPath = path.join(posterDir, safeName);
+
+    const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    fs.writeFileSync(outPath, buffer);
+    console.log(`[POSTER] Saved poster to: ${outPath}`);
+
+    res.json({ success: true, filePath: `/posters/${safeName}` });
+  } catch (err) {
+    console.error('[POSTER] Save error:', err);
+    res.status(500).json({ error: err.message || 'Failed to save poster' });
+  }
+});
+
 module.exports = router;
