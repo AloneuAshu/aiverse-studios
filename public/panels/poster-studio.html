@@ -105,6 +105,22 @@
         </div>
       </div>
 
+      <!-- TELUGU & INDIAN CINEMATIC POSTER TEMPLATES -->
+      <div class="input-group" style="margin-top: 1.2rem; background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.25); padding: 0.8rem; border-radius: 10px;">
+        <div class="label-row">
+          <label class="neon-label" style="color:var(--accent-amber); font-weight:800;">🔥 TELUGU CINEMATIC POSTER TEMPLATES</label>
+          <span class="cyber-dim" style="font-size:0.6rem; color:var(--accent-amber);">One-Click Theme Apply</span>
+        </div>
+        <select id="posterTemplatePreset" class="cinematic-select" style="margin-top:0.4rem; border-color:rgba(245,158,11,0.4);">
+          <option value="custom" selected>🎨 Custom Poster Layout</option>
+          <option value="sankranthi">🎆 Sankranthi Mass Special (Festival Yellow-Red)</option>
+          <option value="waltair">💥 Waltair Action Mass (Poonakaalu Loading)</option>
+          <option value="gattakusthi">💖 Musical & Family Entertainer (Gatta Kusthi Style)</option>
+          <option value="panindia">⚡ Pan-India Action Epic (3D Extruded Chrome)</option>
+          <option value="period">🏆 Mythological & Period Legend (Royal Antique Gold)</option>
+        </select>
+      </div>
+
       <!-- STEP 2: CINEMATIC TYPOGRAPHY & TITLE DESCRIPTION BOX -->
       <div class="panel-header" style="margin-top:1.5rem;">
         <span class="step-num">02</span>
@@ -112,23 +128,23 @@
       </div>
 
       <div class="input-group">
-        <label class="neon-label">MAIN MOVIE / SHOW TITLE</label>
-        <input type="text" id="posterMainTitle" placeholder="e.g. THE ETERNAL LEGEND" value="THE ETERNAL LEGEND" class="cinematic-input">
+        <label class="neon-label">MAIN MOVIE / SHOW TITLE (English or Telugu Script)</label>
+        <input type="text" id="posterMainTitle" placeholder="e.g. వాల్తేరు వీరయ్య / WALTAIR VEERAYYA" value="వాల్తేరు వీరయ్య" class="cinematic-input">
       </div>
 
       <div class="input-group" style="margin-top: 0.6rem;">
         <label class="neon-label">TAGLINE / DESCRIPTION BOX</label>
-        <textarea id="posterTagline" rows="2" placeholder="e.g. IN A WORLD BEYOND TIME, ONLY ONE WARRIOR CAN RESTORE THE LIGHT..." class="cinematic-input">IN A WORLD BEYOND TIME, ONLY ONE WARRIOR CAN RESTORE THE LIGHT.</textarea>
+        <textarea id="posterTagline" rows="2" placeholder="e.g. POONAKAALU LOADING IN THEATERS THIS SANKRANTHI..." class="cinematic-input">POONAKAALU LOADING IN THEATERS THIS SANKRANTHI!</textarea>
       </div>
 
       <div class="input-group-row" style="display:flex; gap:0.6rem; margin-top:0.6rem;">
         <div class="input-group flex-1">
           <label class="neon-label">BILLING / CREDITS LINE</label>
-          <input type="text" id="posterCredits" placeholder="A FILM BY AIVERSE STUDIOS" value="A FILM BY AIVERSE STUDIOS • STARRING JOHN DOE" class="cinematic-input">
+          <input type="text" id="posterCredits" placeholder="A FILM BY AIVERSE STUDIOS" value="DIRECTED BY MEHER RAMESH • MUSIC BY DEVI SRI PRASAD" class="cinematic-input">
         </div>
         <div class="input-group flex-1">
           <label class="neon-label">STUDIO / RELEASE BADGE</label>
-          <input type="text" id="posterBadge" placeholder="IN THEATERS 2026 • 4K ULTRA HD" value="EXCLUSIVE PREMIERE • 4K ULTRA HD" class="cinematic-input">
+          <input type="text" id="posterBadge" placeholder="IN THEATERS SANKRANTHI 2026" value="GRAND RELEASE SANKRANTHI 2026 • 4K ULTRA HD" class="cinematic-input">
         </div>
       </div>
 
@@ -142,14 +158,17 @@
         <div class="input-group flex-1">
           <label class="neon-label">CINEMATIC FONT</label>
           <select id="posterFontSelect" class="cinematic-select">
-            <option value="'Cinzel Decorative', serif" selected>Cinzel Decorative (Epic / Historical)</option>
+            <option value="'Ramabhadra', sans-serif" selected>Ramabhadra (Telugu Heavy Mass Header)</option>
+            <option value="'Noto Sans Telugu', sans-serif">Noto Sans Telugu (Modern Bold Telugu)</option>
+            <option value="'Suranna', serif">Suranna (Classic Telugu Drama)</option>
+            <option value="'Gidugu', cursive">Gidugu (Stylized Telugu Poster)</option>
+            <option value="'Cinzel Decorative', serif">Cinzel Decorative (Imperial / Historical)</option>
             <option value="'Bebas Neue', sans-serif">Bebas Neue (Action / Blockbuster)</option>
             <option value="'Montserrat', sans-serif">Montserrat (Modern Sci-Fi)</option>
             <option value="'Playfair Display', serif">Playfair Display (Dramatic Noir)</option>
             <option value="'Anton', sans-serif">Anton (Heavy Thriller)</option>
             <option value="'Orbitron', sans-serif">Orbitron (Cyberpunk Synth)</option>
             <option value="'UnifrakturCook', cursive">Unifraktur (Gothic Dark Fantasy)</option>
-            <option value="'Outfit', sans-serif">Outfit (Sleek Minimalist)</option>
           </select>
         </div>
 
@@ -157,9 +176,10 @@
           <label class="neon-label">COLOR & GLOW PRESET</label>
           <select id="posterColorPreset" class="cinematic-select">
             <option value="gold" selected>👑 Imperial Gold Gradient</option>
+            <option value="yellow-red">🔥 Telugu Mass Yellow-Red Dual</option>
             <option value="cyan">⚡ Neon Cyan Glow</option>
             <option value="crimson">🩸 Blood Red Thriller</option>
-            <option value="silver">🛡️ Chrome Steel Silver</option>
+            <option value="silver">🛡️ Chrome Steel 3D Silver</option>
             <option value="fire">🔥 Blaze Orange Fire</option>
             <option value="emerald">🧪 Emerald Matrix</option>
             <option value="white">⚪ Crisp Pure White</option>

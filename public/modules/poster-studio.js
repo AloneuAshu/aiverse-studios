@@ -150,6 +150,13 @@ function setupFormListeners() {
   }
 
   // Selects & Sliders
+  const templatePreset = $('posterTemplatePreset');
+  if (templatePreset) {
+    templatePreset.addEventListener('change', (e) => {
+      applyTemplatePreset(e.target.value);
+    });
+  }
+
   const fontSelect = $('posterFontSelect');
   if (fontSelect) {
     fontSelect.addEventListener('change', (e) => {
@@ -367,6 +374,83 @@ function triggerSurpriseMe() {
   toast('🎲 Surprise Me! Cinematic poster randomized.');
 }
 
+function applyTemplatePreset(presetKey) {
+  if (presetKey === 'custom') return;
+
+  if (presetKey === 'sankranthi') {
+    posterState.mainTitle = 'సంక్రాంతికి వస్తున్నాం';
+    posterState.tagline = 'MASS CELEBRATION IN THEATERS THIS SANKRANTHI!';
+    posterState.credits = 'A FILM BY ANIL RAVIPUDI • MUSIC BY DEVI SRI PRASAD';
+    posterState.badge = 'WORLDWIDE GRAND RELEASE JAN 14 SANKRANTHI';
+    posterState.font = "'Ramabhadra', sans-serif";
+    posterState.colorPreset = 'yellow-red';
+    posterState.lut = 'golden';
+    posterState.vignette = 40;
+    posterState.flare = true;
+    posterState.letterbox = true;
+  } else if (presetKey === 'waltair') {
+    posterState.mainTitle = 'వాల్తేరు వీరయ్య';
+    posterState.tagline = 'POONAKAALU LOADING • MASS BLOCKBUSTER!';
+    posterState.credits = 'MEGASTAR CHIRANJEEVI & MASS MAHARAJA RAVI TEJA';
+    posterState.badge = 'MASS BLOCKBUSTER IN THEATERS NOW';
+    posterState.font = "'Ramabhadra', sans-serif";
+    posterState.colorPreset = 'fire';
+    posterState.lut = 'teal-orange';
+    posterState.vignette = 60;
+    posterState.flare = true;
+    posterState.letterbox = true;
+  } else if (presetKey === 'gattakusthi') {
+    posterState.mainTitle = 'మట్టి కుస్తీ';
+    posterState.tagline = 'A HIGH ENERGY COMMERCIAL FAMILY ENTERTAINER';
+    posterState.credits = 'PRODUCED BY VISHNU VISHAL • MUSIC BY JUSTIN PRABHAKARAN';
+    posterState.badge = 'FEBRUARY 2 IN THEATERS';
+    posterState.font = "'Suranna', serif";
+    posterState.colorPreset = 'gold';
+    posterState.lut = 'golden';
+    posterState.vignette = 30;
+    posterState.flare = false;
+    posterState.letterbox = true;
+  } else if (presetKey === 'panindia') {
+    posterState.mainTitle = 'WORLDWIDE DEC 2 RELEASE';
+    posterState.tagline = 'EXPERIENCE THE HIGH-VOLTAGE CINEMATIC SENSATION';
+    posterState.credits = 'STARRING RAM CHARAN • DIRECTED BY BOYAPATI SREENU';
+    posterState.badge = 'RELEASED WORLDWIDE IN 5 LANGUAGES';
+    posterState.font = "'Bebas Neue', sans-serif";
+    posterState.colorPreset = 'silver';
+    posterState.lut = 'noir';
+    posterState.vignette = 75;
+    posterState.flare = true;
+    posterState.letterbox = true;
+  } else if (presetKey === 'period') {
+    posterState.mainTitle = 'EPIC RAMAYANA LEGEND';
+    posterState.tagline = 'THE SACRED TALE OF COURAGE, VALOR & DESTINY';
+    posterState.credits = 'AIVERSE STUDIOS CINEMATIC EXPERIENCE';
+    posterState.badge = 'GRAND CINEMATIC EXPERIENCE 2026';
+    posterState.font = "'Cinzel Decorative', serif";
+    posterState.colorPreset = 'gold';
+    posterState.lut = 'golden';
+    posterState.vignette = 50;
+    posterState.flare = true;
+    posterState.letterbox = true;
+  }
+
+  // Sync UI controls
+  if ($('posterMainTitle')) $('posterMainTitle').value = posterState.mainTitle;
+  if ($('posterTagline')) $('posterTagline').value = posterState.tagline;
+  if ($('posterCredits')) $('posterCredits').value = posterState.credits;
+  if ($('posterBadge')) $('posterBadge').value = posterState.badge;
+  if ($('posterFontSelect')) $('posterFontSelect').value = posterState.font;
+  if ($('posterColorPreset')) $('posterColorPreset').value = posterState.colorPreset;
+  if ($('posterLUTSelect')) $('posterLUTSelect').value = posterState.lut;
+  if ($('posterVignetteSlider')) $('posterVignetteSlider').value = posterState.vignette;
+  if ($('posterVignetteVal')) $('posterVignetteVal').textContent = `${posterState.vignette}%`;
+  if ($('posterCheckFlare')) $('posterCheckFlare').checked = posterState.flare;
+  if ($('posterCheckLetterbox')) $('posterCheckLetterbox').checked = posterState.letterbox;
+
+  renderMasterPoster();
+  toast(`Applied Telugu Template: ${presetKey.toUpperCase()}`);
+}
+
 async function generatePosterImages() {
   const countSlider = $('posterImgCountSlider');
   const count = countSlider ? parseInt(countSlider.value, 10) : 6;
@@ -418,10 +502,26 @@ function generateAIBackdrops(count) {
 
 async function extractVideoFrames(vPath, count) {
   try {
-    // Generate timestamps distributed across video duration
-    const timestamps = [2, 5, 10, 15, 20, 25, 30, 45, 60].slice(0, count);
+    const grid = $('posterGalleryGrid');
+    if (grid) grid.innerHTML = '<div class="poster-gallery-loading">Probing video & extracting frames…</div>';
+
+    // 1. Probe video file to get exact duration
+    const probeRes = await fetch('/api/probe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath: vPath })
+    });
+    const probeData = await probeRes.json();
+    if (!probeRes.ok) throw new Error(probeData.error || 'Failed to probe video file');
+
+    const duration = probeData.duration || 10;
+    posterState.images = [];
+
+    const step = (duration * 0.85) / Math.max(1, count);
+    const startOffset = Math.max(0.5, duration * 0.05);
+
     for (let i = 0; i < count; i++) {
-      const ts = timestamps[i] || (i * 10 + 2);
+      const ts = parseFloat((startOffset + i * step).toFixed(2));
       const url = `/api/thumbnail-at?filePath=${encodeURIComponent(vPath)}&time=${ts}`;
       posterState.images.push({
         id: `vid_${i}_${Date.now()}`,
@@ -429,13 +529,14 @@ async function extractVideoFrames(vPath, count) {
         title: `Frame @ ${ts}s`
       });
     }
+
     posterState.selectedIndex = 0;
     renderGalleryGrid();
     renderMasterPoster();
-    toast(`Extracted ${count} frames from video!`);
+    toast(`Extracted ${count} frames from ${probeData.fileName || 'video'}!`);
   } catch (err) {
-    console.error('Failed to extract video frames', err);
-    toast('Error extracting frames, fallback to AI generator', 'error');
+    console.error('[POSTER] Failed to extract video frames:', err);
+    toast(err.message || 'Error extracting frames, fallback to AI backdrops', 'error');
     generateAIBackdrops(count);
   }
 }
@@ -747,30 +848,8 @@ function renderMasterPoster() {
 
     // DRAW MAIN MOVIE TITLE
     if (posterState.mainTitle && posterState.mainTitle.trim()) {
-      ctx.save();
-
       const titleY = H * (posterState.verticalPos / 100);
-      const titleFont = `${posterState.titleSize}px ${posterState.font}`;
-      ctx.font = titleFont;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      const titleText = posterState.mainTitle.toUpperCase();
-
-      // Multi-layer drop shadow for 3D cinematic depth
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-      ctx.shadowBlur = 24;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 8;
-
-      // Color Presets Gradient Fills
-      const fillStyle = getGradientFill(ctx, W, titleY, posterState.colorPreset);
-      ctx.fillStyle = fillStyle;
-
-      // Letter Spacing (Tracking) drawing
-      drawTrackedText(ctx, titleText, W / 2, titleY, posterState.tracking);
-
-      ctx.restore();
+      draw3DMovieTitle(ctx, posterState.mainTitle, W / 2, titleY, posterState.tracking, posterState.font, posterState.titleSize, posterState.colorPreset);
     }
 
     // DRAW TAGLINE / DESCRIPTION BOX
@@ -806,6 +885,54 @@ function renderMasterPoster() {
   img.src = activeImgObj.dataUrl;
 }
 
+function draw3DMovieTitle(ctx, text, x, y, tracking, font, titleSize, colorPreset) {
+  ctx.save();
+  ctx.font = `${titleSize}px ${font}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const formattedText = text.toUpperCase();
+
+  // 1. Draw 3D Extrusion Shadow Layers (Offset depth for blockbuster Indian movie poster titles)
+  const depth = 6;
+  for (let i = depth; i > 0; i--) {
+    ctx.fillStyle = i === depth ? 'rgba(0, 0, 0, 0.95)' : 'rgba(15, 23, 42, 0.9)';
+    drawTrackedText(ctx, formattedText, x + i * 1.5, y + i * 1.5, tracking);
+  }
+
+  // 2. Dark Stroke Outline for High Contrast
+  ctx.lineWidth = Math.max(3, Math.round(titleSize * 0.06));
+  ctx.strokeStyle = '#000000';
+  drawTrackedTextStroke(ctx, formattedText, x, y, tracking);
+
+  // 3. Main Gradient Fill
+  const fillStyle = getGradientFill(ctx, ctx.canvas.width, y, colorPreset);
+  ctx.fillStyle = fillStyle;
+  drawTrackedText(ctx, formattedText, x, y, tracking);
+
+  ctx.restore();
+}
+
+function drawTrackedTextStroke(ctx, text, x, y, tracking) {
+  if (tracking <= 0) {
+    ctx.strokeText(text, x, y);
+    return;
+  }
+  const chars = text.split('');
+  let totalWidth = 0;
+  chars.forEach(char => {
+    totalWidth += ctx.measureText(char).width + tracking;
+  });
+  totalWidth -= tracking;
+
+  let startX = x - totalWidth / 2;
+  chars.forEach(char => {
+    const charW = ctx.measureText(char).width;
+    ctx.strokeText(char, startX + charW / 2, y);
+    startX += charW + tracking;
+  });
+}
+
 function drawTrackedText(ctx, text, x, y, tracking) {
   if (tracking <= 0) {
     ctx.fillText(text, x, y);
@@ -835,6 +962,13 @@ function getGradientFill(ctx, W, Y, preset) {
       grad.addColorStop(0, '#fef08a');
       grad.addColorStop(0.5, '#f59e0b');
       grad.addColorStop(1, '#b45309');
+      return grad;
+    case 'yellow-red':
+      grad = ctx.createLinearGradient(0, Y - 40, 0, Y + 40);
+      grad.addColorStop(0, '#fef08a');
+      grad.addColorStop(0.35, '#eab308');
+      grad.addColorStop(0.7, '#dc2626');
+      grad.addColorStop(1, '#7f1d1d');
       return grad;
     case 'cyan':
       grad = ctx.createLinearGradient(0, Y - 40, 0, Y + 40);
